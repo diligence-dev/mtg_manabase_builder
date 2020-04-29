@@ -29,6 +29,11 @@
       var castleB = getInt("castleB")
       var castleR = getInt("castleR")
       var castleG = getInt("castleG")
+      var requireW = getInt("w") > 0 ? 1 : 0
+      var requireU = getInt("u") > 0 ? 1 : 0
+      var requireB = getInt("b") > 0 ? 1 : 0
+      var requireR = getInt("r") > 0 ? 1 : 0
+      var requireG = getInt("g") > 0 ? 1 : 0
       var w = getInt("w") - castleW
       var u = getInt("u") - castleU
       var b = getInt("b") - castleB
@@ -41,26 +46,34 @@
       var scoreTemples = getInt("scoreTemples")
       var scoreTriomes = getInt("scoreTriomes")
       var scoreChecks = getInt("scoreChecks")
-      var maxEachBasic = getBool("includeBasics") ? 999 : 0
-      var maxFabledPassage = getBool("includeFabledPassage") ? 4 : 0
-      var maxEachShock = getBool("includeShocks") ? 4 : 0
-      var maxEachTemple = getBool("includeTemples") ? 4 : 0
-      var maxEachTriome = getBool("includeTriomes") ? 4 : 0
-      var maxEachCheck = getBool("includeChecks") ? 4 : 0
+      var minBasics = getInt("minBasics")
+      var minFabledPassages = getInt("minFabledPassages")
+      var minShocks = getInt("minShocks")
+      var minTemples = getInt("minTemples")
+      var minTriomes = getInt("minTriomes")
+      var minChecks = getInt("minChecks")
+      var maxBasics = getInt("maxBasics")
+      var maxFabledPassages = getInt("maxFabledPassages")
+      var maxShocks = getInt("maxShocks")
+      var maxTemples = getInt("maxTemples")
+      var maxTriomes = getInt("maxTriomes")
+      var maxChecks = getInt("maxChecks")
 
       var variables = {
-        "Plains (Basic W)": {"w": 1, "opt": scoreBasics, "total lands": 1, "Plains (Basic W)": 1,
-          "Basics - Fabled Passages - (Fabled Passages > 0)": 1, "Plains - (Fabled Passages > 0)": 1},
-        "Island (Basic U)": {"u": 1, "opt": scoreBasics, "total lands": 1, "Island (Basic U)": 1,
-          "Basics - Fabled Passages - (Fabled Passages > 0)": 1, "Islands - (Fabled Passages > 0)": 1},
-        "Swamp (Basic B)": {"b": 1, "opt": scoreBasics, "total lands": 1, "Swamp (Basic B)": 1,
-          "Basics - Fabled Passages - (Fabled Passages > 0)": 1, "Swamps - (Fabled Passages > 0)": 1},
-        "Mountain (Basic R)": {"r": 1, "opt": scoreBasics, "total lands": 1, "Mountain (Basic R)": 1,
-          "Basics - Fabled Passages - (Fabled Passages > 0)": 1, "Mountains - (Fabled Passages > 0)": 1},
-        "Forest (Basic G)": {"g": 1, "opt": scoreBasics, "total lands": 1, "Forest (Basic G)": 1,
-          "Basics - Fabled Passages - (Fabled Passages > 0)": 1, "Forests - (Fabled Passages > 0)": 1},
+        "Plains (Basic W)": {"w": 1, "opt": scoreBasics + requireW, "total lands": 1, "Plains (Basic W)": 1,
+          "Basics - Fabled Passages - (Fabled Passages > 0)": 1, "Plains - (Fabled Passages > 0)": 1, "sumBasics": 1},
+        "Island (Basic U)": {"u": 1, "opt": scoreBasics + requireU, "total lands": 1, "Island (Basic U)": 1,
+          "Basics - Fabled Passages - (Fabled Passages > 0)": 1, "Islands - (Fabled Passages > 0)": 1, "sumBasics": 1},
+        "Swamp (Basic B)": {"b": 1, "opt": scoreBasics + requireB, "total lands": 1, "Swamp (Basic B)": 1,
+          "Basics - Fabled Passages - (Fabled Passages > 0)": 1, "Swamps - (Fabled Passages > 0)": 1, "sumBasics": 1},
+        "Mountain (Basic R)": {"r": 1, "opt": scoreBasics + requireR, "total lands": 1, "Mountain (Basic R)": 1,
+          "Basics - Fabled Passages - (Fabled Passages > 0)": 1, "Mountains - (Fabled Passages > 0)": 1, "sumBasics": 1},
+        "Forest (Basic G)": {"g": 1, "opt": scoreBasics + requireG, "total lands": 1, "Forest (Basic G)": 1,
+          "Basics - Fabled Passages - (Fabled Passages > 0)": 1, "Forests - (Fabled Passages > 0)": 1, "sumBasics": 1},
 
-        "Fabled Passage": {"w": 1, "u": 1, "b": 1, "r": 1, "g": 1, "opt": scoreFabledPassage, "total lands": 1, "Fabled Passage": 1,
+        "Fabled Passage": {"w": 1, "u": 1, "b": 1, "r": 1, "g": 1,
+          "opt": scoreFabledPassage,
+          "total lands": 1, "Fabled Passage": 1,
           "Basics - Fabled Passages - (Fabled Passages > 0)": -1.25,
           "Plains - (Fabled Passages > 0)": -0.25,
           "Islands - (Fabled Passages > 0)": -0.25,
@@ -68,44 +81,79 @@
           "Mountains - (Fabled Passages > 0)": -0.25,
           "Forests - (Fabled Passages > 0)": -0.25},
 
-        "Hallowed Fountain (Shock WU)": {"w": 1, "u": 1, "opt": scoreShocks, "total lands": 1, "Hallowed Fountain (Shock WU)": 1},
-        "Godless Shrine (Shock WB)": {"w": 1, "b": 1, "opt": scoreShocks, "total lands": 1, "Godless Shrine (Shock WB)": 1},
-        "Sacred Foundry (Shock WR)": {"w": 1, "r": 1, "opt": scoreShocks, "total lands": 1, "Sacred Foundry (Shock WR)": 1},
-        "Temple Garden (Shock WG)": {"w": 1, "g": 1, "opt": scoreShocks, "total lands": 1, "Temple Garden (Shock WG)": 1},
-        "Watery Grave (Shock UB)": {"u": 1, "b": 1, "opt": scoreShocks, "total lands": 1, "Watery Grave (Shock UB)": 1},
-        "Steam Vents (Shock UR)": {"u": 1, "r": 1, "opt": scoreShocks, "total lands": 1, "Steam Vents (Shock UR)": 1},
-        "Breeding Pool (Shock UG)": {"u": 1, "g": 1, "opt": scoreShocks, "total lands": 1, "Breeding Pool (Shock UG)": 1},
-        "Blood Crypt (Shock BR)": {"b": 1, "r": 1, "opt": scoreShocks, "total lands": 1, "Blood Crypt (Shock BR)": 1},
-        "Overgrown Tomb (Shock BG)": {"b": 1, "g": 1, "opt": scoreShocks, "total lands": 1, "Overgrown Tomb (Shock BG)": 1},
-        "Stomping Grounds (Shock RG)": {"r": 1, "g": 1, "opt": scoreShocks, "total lands": 1, "Stomping Grounds (Shock RG)": 1},
+        "Hallowed Fountain (Shock WU)": {"w": 1, "u": 1, "opt": scoreShocks,
+          "total lands": 1, "Hallowed Fountain (Shock WU)": 1, "sumShocks": 1},
+        "Godless Shrine (Shock WB)": {"w": 1, "b": 1, "opt": scoreShocks,
+          "total lands": 1, "Godless Shrine (Shock WB)": 1, "sumShocks": 1},
+        "Sacred Foundry (Shock WR)": {"w": 1, "r": 1, "opt": scoreShocks,
+          "total lands": 1, "Sacred Foundry (Shock WR)": 1, "sumShocks": 1},
+        "Temple Garden (Shock WG)": {"w": 1, "g": 1, "opt": scoreShocks,
+          "total lands": 1, "Temple Garden (Shock WG)": 1, "sumShocks": 1},
+        "Watery Grave (Shock UB)": {"u": 1, "b": 1, "opt": scoreShocks,
+          "total lands": 1, "Watery Grave (Shock UB)": 1, "sumShocks": 1},
+        "Steam Vents (Shock UR)": {"u": 1, "r": 1, "opt": scoreShocks,
+          "total lands": 1, "Steam Vents (Shock UR)": 1, "sumShocks": 1},
+        "Breeding Pool (Shock UG)": {"u": 1, "g": 1, "opt": scoreShocks,
+          "total lands": 1, "Breeding Pool (Shock UG)": 1, "sumShocks": 1},
+        "Blood Crypt (Shock BR)": {"b": 1, "r": 1, "opt": scoreShocks,
+          "total lands": 1, "Blood Crypt (Shock BR)": 1, "sumShocks": 1},
+        "Overgrown Tomb (Shock BG)": {"b": 1, "g": 1, "opt": scoreShocks,
+          "total lands": 1, "Overgrown Tomb (Shock BG)": 1, "sumShocks": 1},
+        "Stomping Grounds (Shock RG)": {"r": 1, "g": 1, "opt": scoreShocks,
+          "total lands": 1, "Stomping Grounds (Shock RG)": 1, "sumShocks": 1},
 
-        "Temple of Enlightenment (Temple WU)": {"w": 1, "u": 1, "opt": scoreTemples, "total lands": 1, "Temple of Enlightenment (Temple WU)": 1},
-        "Temple of Silence (Temple WB)": {"w": 1, "b": 1, "opt": scoreTemples, "total lands": 1, "Temple of Silence (Temple WB)": 1},
-        "Temple of Triumph (Temple WR)": {"w": 1, "r": 1, "opt": scoreTemples, "total lands": 1, "Temple of Triumph (Temple WR)": 1},
-        "Temple of Plenty (Temple WG)": {"w": 1, "g": 1, "opt": scoreTemples, "total lands": 1, "Temple of Plenty (Temple WG)": 1},
-        "Temple of Deceit (Temple UB)": {"u": 1, "b": 1, "opt": scoreTemples, "total lands": 1, "Temple of Deceit (Temple UB)": 1},
-        "Temple of Epiphany (Temple UR)": {"u": 1, "r": 1, "opt": scoreTemples, "total lands": 1, "Temple of Epiphany (Temple UR)": 1},
-        "Temple of Mystery (Temple UG)": {"u": 1, "g": 1, "opt": scoreTemples, "total lands": 1, "Temple of Mystery (Temple UG)": 1},
-        "Temple of Malice (Temple BR)": {"b": 1, "r": 1, "opt": scoreTemples, "total lands": 1, "Temple of Malice (Temple BR)": 1},
-        "Temple of Malady (Temple BG)": {"b": 1, "g": 1, "opt": scoreTemples, "total lands": 1, "Temple of Malady (Temple BG)": 1},
-        "Temple of Abandon (Temple RG)": {"r": 1, "g": 1, "opt": scoreTemples, "total lands": 1, "Temple of Abandon (Temple RG)": 1},
+        "Temple of Enlightenment (Temple WU)": {"w": 1, "u": 1, "opt": scoreTemples,
+          "total lands": 1, "Temple of Enlightenment (Temple WU)": 1, "sumTemples": 1},
+        "Temple of Silence (Temple WB)": {"w": 1, "b": 1, "opt": scoreTemples,
+          "total lands": 1, "Temple of Silence (Temple WB)": 1, "sumTemples": 1},
+        "Temple of Triumph (Temple WR)": {"w": 1, "r": 1, "opt": scoreTemples,
+          "total lands": 1, "Temple of Triumph (Temple WR)": 1, "sumTemples": 1},
+        "Temple of Plenty (Temple WG)": {"w": 1, "g": 1, "opt": scoreTemples,
+          "total lands": 1, "Temple of Plenty (Temple WG)": 1, "sumTemples": 1},
+        "Temple of Deceit (Temple UB)": {"u": 1, "b": 1, "opt": scoreTemples,
+          "total lands": 1, "Temple of Deceit (Temple UB)": 1, "sumTemples": 1},
+        "Temple of Epiphany (Temple UR)": {"u": 1, "r": 1, "opt": scoreTemples,
+          "total lands": 1, "Temple of Epiphany (Temple UR)": 1, "sumTemples": 1},
+        "Temple of Mystery (Temple UG)": {"u": 1, "g": 1, "opt": scoreTemples,
+          "total lands": 1, "Temple of Mystery (Temple UG)": 1, "sumTemples": 1},
+        "Temple of Malice (Temple BR)": {"b": 1, "r": 1, "opt": scoreTemples,
+          "total lands": 1, "Temple of Malice (Temple BR)": 1, "sumTemples": 1},
+        "Temple of Malady (Temple BG)": {"b": 1, "g": 1, "opt": scoreTemples,
+          "total lands": 1, "Temple of Malady (Temple BG)": 1, "sumTemples": 1},
+        "Temple of Abandon (Temple RG)": {"r": 1, "g": 1, "opt": scoreTemples,
+          "total lands": 1, "Temple of Abandon (Temple RG)": 1, "sumTemples": 1},
 
-        "Raugrin Triome (Triome WUR)": {"w": 1, "u": 1, "r": 1, "opt": scoreTriomes, "total lands": 1, "Raugrin Triome (Triome WUR)": 1},
-        "Savai Triome (Triome WBR)": {"w": 1, "b": 1, "r": 1, "opt": scoreTriomes, "total lands": 1, "Savai Triome (Triome WBR)": 1},
-        "Indatha Triome (Triome WBG)": {"w": 1, "b": 1, "g": 1, "opt": scoreTriomes, "total lands": 1, "Indatha Triome (Triome WBG)": 1},
-        "Zagoth Triome (Triome UBG)": {"u": 1, "b": 1, "g": 1, "opt": scoreTriomes, "total lands": 1, "Zagoth Triome (Triome UBG)": 1},
-        "Ketria Triome (Triome URG)": {"u": 1, "r": 1, "g": 1, "opt": scoreTriomes, "total lands": 1, "Ketria Triome (Triome URG)": 1},
+        "Raugrin Triome (Triome WUR)": {"w": 1, "u": 1, "r": 1, "opt": scoreTriomes,
+          "total lands": 1, "Raugrin Triome (Triome WUR)": 1, "sumTriomes": 1},
+        "Savai Triome (Triome WBR)": {"w": 1, "b": 1, "r": 1, "opt": scoreTriomes,
+          "total lands": 1, "Savai Triome (Triome WBR)": 1, "sumTriomes": 1},
+        "Indatha Triome (Triome WBG)": {"w": 1, "b": 1, "g": 1, "opt": scoreTriomes,
+          "total lands": 1, "Indatha Triome (Triome WBG)": 1, "sumTriomes": 1},
+        "Zagoth Triome (Triome UBG)": {"u": 1, "b": 1, "g": 1, "opt": scoreTriomes,
+          "total lands": 1, "Zagoth Triome (Triome UBG)": 1, "sumTriomes": 1},
+        "Ketria Triome (Triome URG)": {"u": 1, "r": 1, "g": 1, "opt": scoreTriomes,
+          "total lands": 1, "Ketria Triome (Triome URG)": 1, "sumTriomes": 1},
 
-        "Glacial Fortress (Check WU)": {"w": 1, "u": 1, "opt": scoreChecks, "total lands": 1, "Glacial Fortress (Check WU)": 1},
-        "Isolated Chapel (Check WB)": {"w": 1, "b": 1, "opt": scoreChecks, "total lands": 1, "Isolated Chapel (Check WB)": 1},
-        "Clifftop Retreat (Check WR)": {"w": 1, "r": 1, "opt": scoreChecks, "total lands": 1, "Clifftop Retreat (Check WR)": 1},
-        "Sunpetal Grove (Check WG)": {"w": 1, "g": 1, "opt": scoreChecks, "total lands": 1, "Sunpetal Grove (Check WG)": 1},
-        "Drowned Catacomb (Check UB)": {"u": 1, "b": 1, "opt": scoreChecks, "total lands": 1, "Drowned Catacomb (Check UB)": 1},
-        "Sulfur Falls (Check UR)": {"u": 1, "r": 1, "opt": scoreChecks, "total lands": 1, "Sulfur Falls (Check UR)": 1},
-        "Hinterland Harbor (Check UG)": {"u": 1, "g": 1, "opt": scoreChecks, "total lands": 1, "Hinterland Harbor (Check UG)": 1},
-        "Dragonskull Summit (Check BR)": {"b": 1, "r": 1, "opt": scoreChecks, "total lands": 1, "Dragonskull Summit (Check BR)": 1},
-        "Woodland Cemetery (Check BG)": {"b": 1, "g": 1, "opt": scoreChecks, "total lands": 1, "Woodland Cemetery (Check BG)": 1},
-        "Rootbound Crag (Check RG)": {"r": 1, "g": 1, "opt": scoreChecks, "total lands": 1, "Rootbound Crag (Check RG)": 1},
+        "Glacial Fortress (Check WU)": {"w": 1, "u": 1, "opt": scoreChecks,
+          "total lands": 1, "Glacial Fortress (Check WU)": 1, "sumChecks": 1},
+        "Isolated Chapel (Check WB)": {"w": 1, "b": 1, "opt": scoreChecks,
+          "total lands": 1, "Isolated Chapel (Check WB)": 1, "sumChecks": 1},
+        "Clifftop Retreat (Check WR)": {"w": 1, "r": 1, "opt": scoreChecks,
+          "total lands": 1, "Clifftop Retreat (Check WR)": 1, "sumChecks": 1},
+        "Sunpetal Grove (Check WG)": {"w": 1, "g": 1, "opt": scoreChecks,
+          "total lands": 1, "Sunpetal Grove (Check WG)": 1, "sumChecks": 1},
+        "Drowned Catacomb (Check UB)": {"u": 1, "b": 1, "opt": scoreChecks,
+          "total lands": 1, "Drowned Catacomb (Check UB)": 1, "sumChecks": 1},
+        "Sulfur Falls (Check UR)": {"u": 1, "r": 1, "opt": scoreChecks,
+          "total lands": 1, "Sulfur Falls (Check UR)": 1, "sumChecks": 1},
+        "Hinterland Harbor (Check UG)": {"u": 1, "g": 1, "opt": scoreChecks,
+          "total lands": 1, "Hinterland Harbor (Check UG)": 1, "sumChecks": 1},
+        "Dragonskull Summit (Check BR)": {"b": 1, "r": 1, "opt": scoreChecks,
+          "total lands": 1, "Dragonskull Summit (Check BR)": 1, "sumChecks": 1},
+        "Woodland Cemetery (Check BG)": {"b": 1, "g": 1, "opt": scoreChecks,
+          "total lands": 1, "Woodland Cemetery (Check BG)": 1, "sumChecks": 1},
+        "Rootbound Crag (Check RG)": {"r": 1, "g": 1, "opt": scoreChecks,
+          "total lands": 1, "Rootbound Crag (Check RG)": 1, "sumChecks": 1},
       }
 
       var ints = {}
@@ -124,13 +172,14 @@
           "r": {"min": r},
           "g": {"min": g},
 
-          "Plains (Basic W)": {"min": 0, "max": maxEachBasic},
-          "Island (Basic U)": {"min": 0, "max": maxEachBasic},
-          "Swamp (Basic B)": {"min": 0, "max": maxEachBasic},
-          "Mountain (Basic R)": {"min": 0, "max": maxEachBasic},
-          "Forest (Basic G)": {"min": 0, "max": maxEachBasic},
+          "Plains (Basic W)": {"min": 0, "max": 999},
+          "Island (Basic U)": {"min": 0, "max": 999},
+          "Swamp (Basic B)": {"min": 0, "max": 999},
+          "Mountain (Basic R)": {"min": 0, "max": 999},
+          "Forest (Basic G)": {"min": 0, "max": 999},
+          "sumBasics": {"min": minBasics, "max": maxBasics},
 
-          "Fabled Passage": {"min": 0, "max": maxFabledPassage},
+          "Fabled Passage": {"min": minFabledPassages, "max": maxFabledPassages},
           // if running Fabled Passage enforce more basics than Fabled Passages
           "Basics - Fabled Passages - (Fabled Passages > 0)": {"min": 0},
           // if we want any white make sure we get a plains when running a Fabled Passage
@@ -140,44 +189,48 @@
           "Mountains - (Fabled Passages > 0)": {"min": r > 0 ? 0 : -100},
           "Forests - (Fabled Passages > 0)": {"min": g > 0 ? 0 : -100},
 
-          "Hallowed Fountain (Shock WU)": {"min": 0, "max": maxEachShock},
-          "Godless Shrine (Shock WB)": {"min": 0, "max": maxEachShock},
-          "Sacred Foundry (Shock WR)": {"min": 0, "max": maxEachShock},
-          "Temple Garden (Shock WG)": {"min": 0, "max": maxEachShock},
-          "Watery Grave (Shock UB)": {"min": 0, "max": maxEachShock},
-          "Steam Vents (Shock UR)": {"min": 0, "max": maxEachShock},
-          "Breeding Pool (Shock UG)": {"min": 0, "max": maxEachShock},
-          "Blood Crypt (Shock BR)": {"min": 0, "max": maxEachShock},
-          "Overgrown Tomb (Shock BG)": {"min": 0, "max": maxEachShock},
-          "Stomping Grounds (Shock RG)": {"min": 0, "max": maxEachShock},
+          "Hallowed Fountain (Shock WU)": {"min": 0, "max": 4},
+          "Godless Shrine (Shock WB)": {"min": 0, "max": 4},
+          "Sacred Foundry (Shock WR)": {"min": 0, "max": 4},
+          "Temple Garden (Shock WG)": {"min": 0, "max": 4},
+          "Watery Grave (Shock UB)": {"min": 0, "max": 4},
+          "Steam Vents (Shock UR)": {"min": 0, "max": 4},
+          "Breeding Pool (Shock UG)": {"min": 0, "max": 4},
+          "Blood Crypt (Shock BR)": {"min": 0, "max": 4},
+          "Overgrown Tomb (Shock BG)": {"min": 0, "max": 4},
+          "Stomping Grounds (Shock RG)": {"min": 0, "max": 4},
+          "sumShocks": {"min": minShocks, "max": maxShocks},
 
-          "Temple of Enlightenment (Temple WU)": {"min": 0, "max": maxEachTemple},
-          "Temple of Silence (Temple WB)": {"min": 0, "max": maxEachTemple},
-          "Temple of Triumph (Temple WR)": {"min": 0, "max": maxEachTemple},
-          "Temple of Plenty (Temple WG)": {"min": 0, "max": maxEachTemple},
-          "Temple of Deceit (Temple UB)": {"min": 0, "max": maxEachTemple},
-          "Temple of Epiphany (Temple UR)": {"min": 0, "max": maxEachTemple},
-          "Temple of Mystery (Temple UG)": {"min": 0, "max": maxEachTemple},
-          "Temple of Malice (Temple BR)": {"min": 0, "max": maxEachTemple},
-          "Temple of Malady (Temple BG)": {"min": 0, "max": maxEachTemple},
-          "Temple of Abandon (Temple RG)": {"min": 0, "max": maxEachTemple},
+          "Temple of Enlightenment (Temple WU)": {"min": 0, "max": 4},
+          "Temple of Silence (Temple WB)": {"min": 0, "max": 4},
+          "Temple of Triumph (Temple WR)": {"min": 0, "max": 4},
+          "Temple of Plenty (Temple WG)": {"min": 0, "max": 4},
+          "Temple of Deceit (Temple UB)": {"min": 0, "max": 4},
+          "Temple of Epiphany (Temple UR)": {"min": 0, "max": 4},
+          "Temple of Mystery (Temple UG)": {"min": 0, "max": 4},
+          "Temple of Malice (Temple BR)": {"min": 0, "max": 4},
+          "Temple of Malady (Temple BG)": {"min": 0, "max": 4},
+          "Temple of Abandon (Temple RG)": {"min": 0, "max": 4},
+          "sumTemples": {"min": minTemples, "max": maxTemples},
 
-          "Raugrin Triome (Triome WUR)": {"min": 0, "max": maxEachTriome},
-          "Savai Triome (Triome WBR)": {"min": 0, "max": maxEachTriome},
-          "Indatha Triome (Triome WBG)": {"min": 0, "max": maxEachTriome},
-          "Zagoth Triome (Triome UBG)": {"min": 0, "max": maxEachTriome},
-          "Ketria Triome (Triome URG)": {"min": 0, "max": maxEachTriome},
+          "Raugrin Triome (Triome WUR)": {"min": 0, "max": 4},
+          "Savai Triome (Triome WBR)": {"min": 0, "max": 4},
+          "Indatha Triome (Triome WBG)": {"min": 0, "max": 4},
+          "Zagoth Triome (Triome UBG)": {"min": 0, "max": 4},
+          "Ketria Triome (Triome URG)": {"min": 0, "max": 4},
+          "sumTriomes": {"min": minTriomes, "max": maxTriomes},
 
-          "Glacial Fortress (Check WU)": {"min": 0, "max": maxEachCheck},
-          "Isolated Chapel (Check WB)": {"min": 0, "max": maxEachCheck},
-          "Clifftop Retreat (Check WR)": {"min": 0, "max": maxEachCheck},
-          "Sunpetal Grove (Check WG)": {"min": 0, "max": maxEachCheck},
-          "Drowned Catacomb (Check UB)": {"min": 0, "max": maxEachCheck},
-          "Sulfur Falls (Check UR)": {"min": 0, "max": maxEachCheck},
-          "Hinterland Harbor (Check UG)": {"min": 0, "max": maxEachCheck},
-          "Dragonskull Summit (Check BR)": {"min": 0, "max": maxEachCheck},
-          "Woodland Cemetery (Check BG)": {"min": 0, "max": maxEachCheck},
-          "Rootbound Crag (Check RG)": {"min": 0, "max": maxEachCheck},
+          "Glacial Fortress (Check WU)": {"min": 0, "max": 4},
+          "Isolated Chapel (Check WB)": {"min": 0, "max": 4},
+          "Clifftop Retreat (Check WR)": {"min": 0, "max": 4},
+          "Sunpetal Grove (Check WG)": {"min": 0, "max": 4},
+          "Drowned Catacomb (Check UB)": {"min": 0, "max": 4},
+          "Sulfur Falls (Check UR)": {"min": 0, "max": 4},
+          "Hinterland Harbor (Check UG)": {"min": 0, "max": 4},
+          "Dragonskull Summit (Check BR)": {"min": 0, "max": 4},
+          "Woodland Cemetery (Check BG)": {"min": 0, "max": 4},
+          "Rootbound Crag (Check RG)": {"min": 0, "max": 4},
+          "sumChecks": {"min": minChecks, "max": maxChecks},
         },
         "variables": variables,
         "ints": ints
@@ -339,42 +392,49 @@
       </form>
     </div>
 
-    <form onsubmit="solveManabase(); return false" class="border border-dark p-2 col-sm-6 my-3">
+    <form onsubmit="solveManabase(); return false" class="border border-dark p-2 col-sm-8 my-3">
       <div class="mb-3">color requirements will ALWAYS be met, further optimization takes the following scores into account</div>
       <div class="form-group row">
         <div class="col"></div>
         <div class="col">score</div>
-        <div class="col">include</div>
+        <div class="col">min</div>
+        <div class="col">max</div>
       </div>
       <div class="form-group row">
         <label class="col">Basic Lands</label>
         <div class="col"><input id="scoreBasics" class="form-control" type="number" value="102"></div>
-        <div class="col"><input id="includeBasics" class="form-control" type="checkbox" checked></div>
+        <div class="col"><input id="minBasics" class="form-control" type="number" value="0"></div>
+        <div class="col"><input id="maxBasics" class="form-control" type="number" value="99"></div>
       </div>
       <div class="form-group row">
         <label class="col">Fabled Passage</label>
         <div class="col"><input id="scoreFabledPassage" class="form-control" type="number" value="90"></div>
-        <div class="col"><input id="includeFabledPassage" class="form-control" type="checkbox" checked></div>
+        <div class="col"><input id="minFabledPassages" class="form-control" type="number" value="0"></div>
+        <div class="col"><input id="maxFabledPassages" class="form-control" type="number" value="4"></div>
       </div>
       <div class="form-group row">
         <label class="col">Shocklands</label>
         <div class="col"><input id="scoreShocks" class="form-control" type="number" value="100"></div>
-        <div class="col"><input id="includeShocks" class="form-control" type="checkbox" checked></div>
+        <div class="col"><input id="minShocks" class="form-control" type="number" value="0"></div>
+        <div class="col"><input id="maxShocks" class="form-control" type="number" value="40"></div>
       </div>
       <div class="form-group row">
         <label class="col">Temples</label>
         <div class="col"><input id="scoreTemples" class="form-control" type="number" value="1"></div>
-        <div class="col"><input id="includeTemples" class="form-control" type="checkbox" checked></div>
+        <div class="col"><input id="minTemples" class="form-control" type="number" value="0"></div>
+        <div class="col"><input id="maxTemples" class="form-control" type="number" value="40"></div>
       </div>
       <div class="form-group row">
         <label class="col">Triomes</label>
-        <div class="col"><input id="scoreTriomes" class="form-control" type="number" value="-1"></div>
-        <div class="col"><input id="includeTriomes" class="form-control" type="checkbox" checked></div>
+        <div class="col"><input id="scoreTriomes" class="form-control" type="number" value="50"></div>
+        <div class="col"><input id="minTriomes" class="form-control" type="number" value="0"></div>
+        <div class="col"><input id="maxTriomes" class="form-control" type="number" value="40"></div>
       </div>
       <div class="form-group row">
         <label class="col">Checklands</label>
         <div class="col"><input id="scoreChecks" class="form-control" type="number" value="101"></div>
-        <div class="col"><input id="includeChecks" class="form-control" type="checkbox" unchecked></div>
+        <div class="col"><input id="minChecks" class="form-control" type="number" value="0"></div>
+        <div class="col"><input id="maxChecks" class="form-control" type="number" value="0"></div>
       </div>
       <button type="submit" class="btn btn-primary">Submit</button>
     </form>
