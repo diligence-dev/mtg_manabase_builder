@@ -18,10 +18,6 @@
       return parseInt(document.getElementById(id).value || 0, 10)
     }
 
-    function getBool(id) {
-      return !!document.getElementById(id).checked
-    }
-
     function solveManabase() {
       var numberOfLands = getInt("total lands")
       var castleW = getInt("castleW")
@@ -58,6 +54,7 @@
       var maxTemples = getInt("maxTemples")
       var maxTriomes = getInt("maxTriomes")
       var maxChecks = getInt("maxChecks")
+      var fractionFP = getInt("fractionFP")
 
       var variables = {
         "Plains (Basic W)": {"w": 1, "opt": scoreBasics + requireW, "total lands": 1, "Plains (Basic W)": 1,
@@ -71,7 +68,7 @@
         "Forest (Basic G)": {"g": 1, "opt": scoreBasics + requireG, "total lands": 1, "Forest (Basic G)": 1,
           "Basics - Fabled Passages - (Fabled Passages > 0)": 1, "Forests - (Fabled Passages > 0)": 1, "sumBasics": 1},
 
-        "Fabled Passage": {"w": 1, "u": 1, "b": 1, "r": 1, "g": 1,
+        "Fabled Passage": {"w": fractionFP, "u": fractionFP, "b": fractionFP, "r": fractionFP, "g": fractionFP,
           "opt": scoreFabledPassage,
           "total lands": 1, "Fabled Passage": 1,
           "Basics - Fabled Passages - (Fabled Passages > 0)": -1.25,
@@ -435,6 +432,12 @@
         <div class="col"><input id="scoreChecks" class="form-control" type="number" value="101"></div>
         <div class="col"><input id="minChecks" class="form-control" type="number" value="0"></div>
         <div class="col"><input id="maxChecks" class="form-control" type="number" value="0"></div>
+      </div>
+      <div class="form-group row">
+        <label class="col-sm-6">count Fabled Passage as fractional source (Frank suggests 0.67 for 3 color decks)</label>
+        <div class="col">
+          <input id="fractionFP" class="form-control" type="number" value="1" min="0" max="1" step="0.01">
+        </div>
       </div>
       <button type="submit" class="btn btn-primary">Submit</button>
     </form>
