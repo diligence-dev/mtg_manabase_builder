@@ -14,8 +14,79 @@
     }
   </style>
   <script type="text/javascript">
+    // extended by guessing, original taken from https://www.channelfireball.com/all-strategy/articles/how-many-colored-mana-sources-do-you-need-to-consistently-cast-your-spells-a-guilds-of-ravnica-update/
+    // karstens60CardsTable[3][2] returns colored sources required for 3 cmc spell with 2 specific mana
+    var karstens60CardsTable = {
+      1: { 1: 14 },
+      2: { 1: 13, 2: 20 },
+      3: { 1: 11, 2: 18, 3: 23 },
+      4: { 1: 10, 2: 16, 3: 20, 4: 24 },
+      5: { 1: 9,  2: 14, 3: 18, 4: 21, 5: 24 },
+      6: { 1: 8,  2: 13, 3: 16, 4: 19, 5: 22, 6: 24 },
+      7: { 1: 7,  2: 11, 3: 14, 4: 17, 5: 20, 6: 22, 7: 24 },
+    }
+
     function getInt(id) {
       return parseInt(document.getElementById(id).value || 0, 10)
+    }
+
+    function countInString(string, searchString) {
+      return string.split(searchString).length - 1
+    }
+
+    function analyzeManaCost(manaCostString) {
+      var result = { cmc: 0 }
+      manaCostString.replace(/}|\//g, "").split("{").slice(1).forEach(function (token) {
+        token = token.toUpperCase().split("").sort().join("")
+        result.cmc += token === "X" ? xInManaCost : (parseInt(token) || 1)
+        result[token] = (result[token] || 0) + 1
+      })
+      result.multicolor = "W,U,B,R,G".split(",").map(function(c) { return (result[c] || 0) > 0 }).filter(Boolean).length >= 2
+      return result
+    }
+
+    function deriveColorRequirements() {
+      var xInManaCost = getInt("xInManaCost")
+      var deck = document.getElementById("deck").value
+      var json = JSON.stringify({
+        "identifiers": deck.split("\n").filter(Boolean).map(function(line) {
+          var line_split = line.split(" ")
+          return {
+            "name": line_split.slice(1, -2).join(" "),
+            "set": line_split[line_split.length - 2].slice(1, -1),
+            "collector_number": line_split[line_split.length - 1]
+          }
+        })
+      })
+
+      var required = {}
+
+      var xhttp = new XMLHttpRequest()
+      xhttp.onreadystatechange = function() {
+        if (this.readyState == 4 && this.status == 200) {
+          var answer = JSON.parse(this.response)
+          answer.data.forEach(function (card) {
+            if (card.cmc > 0) {
+              card.mana_cost.split(" // ").forEach(function (manaCostString) {
+                var cost = analyzeManaCost(manaCostString)
+
+                if (1 <= cost.cmc && cost.cmc <= 7) {
+                  "W,U,B,R,G,UW,BW,RW,GW,BU,RU,GU,BR,BG,GR".split(",").forEach(function (c) {
+                    required[c] = Math.max(required[c] || 0, (karstens60CardsTable[cost.cmc][cost[c] || 0] || -1) + (cost.multicolor ? 1 : 0))
+                  })
+                }
+              })
+            }
+          })
+          Object.keys(required).forEach(function (key) {
+            document.getElementById(key).value = required[key]
+          })
+          solveManabase()
+        }
+      }
+      xhttp.open("POST", "https://api.scryfall.com/cards/collection", true)
+      xhttp.setRequestHeader("Content-type", "application/json")
+      xhttp.send(json)
     }
 
     function solveManabase() {
@@ -25,16 +96,26 @@
       var castleB = getInt("castleB")
       var castleR = getInt("castleR")
       var castleG = getInt("castleG")
-      var requireW = getInt("w") > 0 ? 1 : 0
-      var requireU = getInt("u") > 0 ? 1 : 0
-      var requireB = getInt("b") > 0 ? 1 : 0
-      var requireR = getInt("r") > 0 ? 1 : 0
-      var requireG = getInt("g") > 0 ? 1 : 0
-      var w = getInt("w") - castleW
-      var u = getInt("u") - castleU
-      var b = getInt("b") - castleB
-      var r = getInt("r") - castleR
-      var g = getInt("g") - castleG
+      var isRequiredW = getInt("W") > 0 ? 1 : 0
+      var isRequiredU = getInt("U") > 0 ? 1 : 0
+      var isRequiredB = getInt("B") > 0 ? 1 : 0
+      var isRequiredR = getInt("R") > 0 ? 1 : 0
+      var isRequiredG = getInt("G") > 0 ? 1 : 0
+      var requiredW = getInt("W") - castleW
+      var requiredU = getInt("U") - castleU
+      var requiredB = getInt("B") - castleB
+      var requiredR = getInt("R") - castleR
+      var requiredG = getInt("G") - castleG
+      var requiredUW = getInt("UW")
+      var requiredBW = getInt("BW")
+      var requiredRW = getInt("RW")
+      var requiredGW = getInt("GW")
+      var requiredBU = getInt("BU")
+      var requiredRU = getInt("RU")
+      var requiredGU = getInt("GU")
+      var requiredBR = getInt("BR")
+      var requiredBG = getInt("BG")
+      var requiredGR = getInt("GR")
       var sumCastles = castleW + castleU + castleB + castleR + castleG
       var scoreBasics = getInt("scoreBasics")
       var scoreFabledPassage = getInt("scoreFabledPassage")
@@ -57,18 +138,25 @@
       var fractionFP = getInt("fractionFP")
 
       var variables = {
-        "Plains (Basic W)": {"w": 1, "opt": scoreBasics + requireW, "total lands": 1, "Plains (Basic W)": 1,
+        "Plains (Basic W)": {"W": 1, "UW": 1, "BW": 1, "RW": 1, "GW": 1, "opt": scoreBasics + isRequiredW,
+          "total lands": 1, "Plains (Basic W)": 1,
           "Basics - Fabled Passages - (Fabled Passages > 0)": 1, "Plains - (Fabled Passages > 0)": 1, "sumBasics": 1},
-        "Island (Basic U)": {"u": 1, "opt": scoreBasics + requireU, "total lands": 1, "Island (Basic U)": 1,
+        "Island (Basic U)": {"U": 1, "UW": 1, "BU": 1, "RU": 1, "GU": 1, "opt": scoreBasics + isRequiredU,
+          "total lands": 1, "Island (Basic U)": 1,
           "Basics - Fabled Passages - (Fabled Passages > 0)": 1, "Islands - (Fabled Passages > 0)": 1, "sumBasics": 1},
-        "Swamp (Basic B)": {"b": 1, "opt": scoreBasics + requireB, "total lands": 1, "Swamp (Basic B)": 1,
+        "Swamp (Basic B)": {"B": 1, "BW": 1, "BU": 1, "BR": 1, "BG": 1, "opt": scoreBasics + isRequiredB,
+          "total lands": 1, "Swamp (Basic B)": 1,
           "Basics - Fabled Passages - (Fabled Passages > 0)": 1, "Swamps - (Fabled Passages > 0)": 1, "sumBasics": 1},
-        "Mountain (Basic R)": {"r": 1, "opt": scoreBasics + requireR, "total lands": 1, "Mountain (Basic R)": 1,
+        "Mountain (Basic R)": {"R": 1, "RW": 1, "RU": 1, "BR": 1, "GR": 1, "opt": scoreBasics + isRequiredR,
+          "total lands": 1, "Mountain (Basic R)": 1,
           "Basics - Fabled Passages - (Fabled Passages > 0)": 1, "Mountains - (Fabled Passages > 0)": 1, "sumBasics": 1},
-        "Forest (Basic G)": {"g": 1, "opt": scoreBasics + requireG, "total lands": 1, "Forest (Basic G)": 1,
+        "Forest (Basic G)": {"G": 1, "GW": 1, "GU": 1, "BG": 1, "GR": 1, "opt": scoreBasics + isRequiredG,
+          "total lands": 1, "Forest (Basic G)": 1,
           "Basics - Fabled Passages - (Fabled Passages > 0)": 1, "Forests - (Fabled Passages > 0)": 1, "sumBasics": 1},
 
-        "Fabled Passage": {"w": fractionFP, "u": fractionFP, "b": fractionFP, "r": fractionFP, "g": fractionFP,
+        "Fabled Passage": {"W": fractionFP, "U": fractionFP, "B": fractionFP, "R": fractionFP, "G": fractionFP,
+          "UW": fractionFP, "BW": fractionFP, "RW": fractionFP, "GW": fractionFP, "BU": fractionFP,
+          "RU": fractionFP, "GU": fractionFP, "BR": fractionFP, "BG": fractionFP, "GR": fractionFP,
           "opt": scoreFabledPassage,
           "total lands": 1, "Fabled Passage": 1,
           "Basics - Fabled Passages - (Fabled Passages > 0)": -1.25,
@@ -78,78 +166,113 @@
           "Mountains - (Fabled Passages > 0)": -0.25,
           "Forests - (Fabled Passages > 0)": -0.25},
 
-        "Hallowed Fountain (Shock WU)": {"w": 1, "u": 1, "opt": scoreShocks,
+        "Hallowed Fountain (Shock WU)": {"W": 1, "U": 1, "opt": scoreShocks,
+          "UW": 1, "BW": 1, "RW": 1, "GW": 1, "BU": 1, "RU": 1, "GU": 1,
           "total lands": 1, "Hallowed Fountain (Shock WU)": 1, "sumShocks": 1},
-        "Godless Shrine (Shock WB)": {"w": 1, "b": 1, "opt": scoreShocks,
+        "Godless Shrine (Shock WB)": {"W": 1, "B": 1, "opt": scoreShocks,
+          "UW": 1, "BW": 1, "RW": 1, "GW": 1, "BU": 1, "BR": 1, "BG": 1,
           "total lands": 1, "Godless Shrine (Shock WB)": 1, "sumShocks": 1},
-        "Sacred Foundry (Shock WR)": {"w": 1, "r": 1, "opt": scoreShocks,
+        "Sacred Foundry (Shock WR)": {"W": 1, "R": 1, "opt": scoreShocks,
+          "UW": 1, "BW": 1, "RW": 1, "GW": 1, "RU": 1, "BR": 1, "GR": 1,
           "total lands": 1, "Sacred Foundry (Shock WR)": 1, "sumShocks": 1},
-        "Temple Garden (Shock WG)": {"w": 1, "g": 1, "opt": scoreShocks,
+        "Temple Garden (Shock WG)": {"W": 1, "G": 1, "opt": scoreShocks,
+          "UW": 1, "BW": 1, "RW": 1, "GW": 1, "GU": 1, "BG": 1, "GR": 1,
           "total lands": 1, "Temple Garden (Shock WG)": 1, "sumShocks": 1},
-        "Watery Grave (Shock UB)": {"u": 1, "b": 1, "opt": scoreShocks,
+        "Watery Grave (Shock UB)": {"U": 1, "B": 1, "opt": scoreShocks,
+          "UW": 1, "BW": 1, "BU": 1, "RU": 1, "GU": 1, "BR": 1, "BG": 1,
           "total lands": 1, "Watery Grave (Shock UB)": 1, "sumShocks": 1},
-        "Steam Vents (Shock UR)": {"u": 1, "r": 1, "opt": scoreShocks,
+        "Steam Vents (Shock UR)": {"U": 1, "R": 1, "opt": scoreShocks,
+          "UW": 1, "RW": 1, "BU": 1, "RU": 1, "GU": 1, "BR": 1, "GR": 1,
           "total lands": 1, "Steam Vents (Shock UR)": 1, "sumShocks": 1},
-        "Breeding Pool (Shock UG)": {"u": 1, "g": 1, "opt": scoreShocks,
+        "Breeding Pool (Shock UG)": {"U": 1, "G": 1, "opt": scoreShocks,
+          "UW": 1, "GW": 1, "BU": 1, "RU": 1, "GU": 1, "BG": 1, "GR": 1,
           "total lands": 1, "Breeding Pool (Shock UG)": 1, "sumShocks": 1},
-        "Blood Crypt (Shock BR)": {"b": 1, "r": 1, "opt": scoreShocks,
+        "Blood Crypt (Shock BR)": {"B": 1, "R": 1, "opt": scoreShocks,
+          "BW": 1, "RW": 1, "BU": 1, "RU": 1, "BR": 1, "BG": 1, "GR": 1,
           "total lands": 1, "Blood Crypt (Shock BR)": 1, "sumShocks": 1},
-        "Overgrown Tomb (Shock BG)": {"b": 1, "g": 1, "opt": scoreShocks,
+        "Overgrown Tomb (Shock BG)": {"B": 1, "G": 1, "opt": scoreShocks,
+          "BW": 1, "GW": 1, "BU": 1, "GU": 1, "BR": 1, "BG": 1, "GR": 1,
           "total lands": 1, "Overgrown Tomb (Shock BG)": 1, "sumShocks": 1},
-        "Stomping Grounds (Shock RG)": {"r": 1, "g": 1, "opt": scoreShocks,
+        "Stomping Grounds (Shock RG)": {"R": 1, "G": 1, "opt": scoreShocks,
+          "RW": 1, "GW": 1, "RU": 1, "GU": 1, "BR": 1, "BG": 1, "GR": 1,
           "total lands": 1, "Stomping Grounds (Shock RG)": 1, "sumShocks": 1},
 
-        "Temple of Enlightenment (Temple WU)": {"w": 1, "u": 1, "opt": scoreTemples,
+        "Temple of Enlightenment (Temple WU)": {"W": 1, "U": 1, "opt": scoreTemples,
+          "UW": 1, "BW": 1, "RW": 1, "GW": 1, "BU": 1, "RU": 1, "GU": 1,
           "total lands": 1, "Temple of Enlightenment (Temple WU)": 1, "sumTemples": 1},
-        "Temple of Silence (Temple WB)": {"w": 1, "b": 1, "opt": scoreTemples,
+        "Temple of Silence (Temple WB)": {"W": 1, "B": 1, "opt": scoreTemples,
+          "UW": 1, "BW": 1, "RW": 1, "GW": 1, "BU": 1, "BR": 1, "BG": 1,
           "total lands": 1, "Temple of Silence (Temple WB)": 1, "sumTemples": 1},
-        "Temple of Triumph (Temple WR)": {"w": 1, "r": 1, "opt": scoreTemples,
+        "Temple of Triumph (Temple WR)": {"W": 1, "R": 1, "opt": scoreTemples,
+          "UW": 1, "BW": 1, "RW": 1, "GW": 1, "RU": 1, "BR": 1, "GR": 1,
           "total lands": 1, "Temple of Triumph (Temple WR)": 1, "sumTemples": 1},
-        "Temple of Plenty (Temple WG)": {"w": 1, "g": 1, "opt": scoreTemples,
+        "Temple of Plenty (Temple WG)": {"W": 1, "G": 1, "opt": scoreTemples,
+          "UW": 1, "BW": 1, "RW": 1, "GW": 1, "GU": 1, "BG": 1, "GR": 1,
           "total lands": 1, "Temple of Plenty (Temple WG)": 1, "sumTemples": 1},
-        "Temple of Deceit (Temple UB)": {"u": 1, "b": 1, "opt": scoreTemples,
+        "Temple of Deceit (Temple UB)": {"U": 1, "B": 1, "opt": scoreTemples,
+          "UW": 1, "BW": 1, "BU": 1, "RU": 1, "GU": 1, "BR": 1, "BG": 1,
           "total lands": 1, "Temple of Deceit (Temple UB)": 1, "sumTemples": 1},
-        "Temple of Epiphany (Temple UR)": {"u": 1, "r": 1, "opt": scoreTemples,
+        "Temple of Epiphany (Temple UR)": {"U": 1, "R": 1, "opt": scoreTemples,
+          "UW": 1, "RW": 1, "BU": 1, "RU": 1, "GU": 1, "BR": 1, "GR": 1,
           "total lands": 1, "Temple of Epiphany (Temple UR)": 1, "sumTemples": 1},
-        "Temple of Mystery (Temple UG)": {"u": 1, "g": 1, "opt": scoreTemples,
+        "Temple of Mystery (Temple UG)": {"U": 1, "G": 1, "opt": scoreTemples,
+          "UW": 1, "GW": 1, "BU": 1, "RU": 1, "GU": 1, "BG": 1, "GR": 1,
           "total lands": 1, "Temple of Mystery (Temple UG)": 1, "sumTemples": 1},
-        "Temple of Malice (Temple BR)": {"b": 1, "r": 1, "opt": scoreTemples,
+        "Temple of Malice (Temple BR)": {"B": 1, "R": 1, "opt": scoreTemples,
+          "BW": 1, "RW": 1, "BU": 1, "RU": 1, "BR": 1, "BG": 1, "GR": 1,
           "total lands": 1, "Temple of Malice (Temple BR)": 1, "sumTemples": 1},
-        "Temple of Malady (Temple BG)": {"b": 1, "g": 1, "opt": scoreTemples,
+        "Temple of Malady (Temple BG)": {"B": 1, "G": 1, "opt": scoreTemples,
+          "BW": 1, "GW": 1, "BU": 1, "GU": 1, "BR": 1, "BG": 1, "GR": 1,
           "total lands": 1, "Temple of Malady (Temple BG)": 1, "sumTemples": 1},
-        "Temple of Abandon (Temple RG)": {"r": 1, "g": 1, "opt": scoreTemples,
+        "Temple of Abandon (Temple RG)": {"R": 1, "G": 1, "opt": scoreTemples,
+          "RW": 1, "GW": 1, "RU": 1, "GU": 1, "BR": 1, "BG": 1, "GR": 1,
           "total lands": 1, "Temple of Abandon (Temple RG)": 1, "sumTemples": 1},
 
-        "Raugrin Triome (Triome WUR)": {"w": 1, "u": 1, "r": 1, "opt": scoreTriomes,
+        "Raugrin Triome (Triome WUR)": {"W": 1, "U": 1, "R": 1, "opt": scoreTriomes,
+          "UW": 1, "BW": 1, "RW": 1, "GW": 1, "BU": 1, "RU": 1, "GU": 1, "BR": 1, "GR": 1,
           "total lands": 1, "Raugrin Triome (Triome WUR)": 1, "sumTriomes": 1},
-        "Savai Triome (Triome WBR)": {"w": 1, "b": 1, "r": 1, "opt": scoreTriomes,
+        "Savai Triome (Triome WBR)": {"W": 1, "B": 1, "R": 1, "opt": scoreTriomes,
+          "UW": 1, "BW": 1, "RW": 1, "GW": 1, "BU": 1, "RU": 1, "BR": 1, "BG": 1, "GR": 1,
           "total lands": 1, "Savai Triome (Triome WBR)": 1, "sumTriomes": 1},
-        "Indatha Triome (Triome WBG)": {"w": 1, "b": 1, "g": 1, "opt": scoreTriomes,
+        "Indatha Triome (Triome WBG)": {"W": 1, "B": 1, "G": 1, "opt": scoreTriomes,
+          "UW": 1, "BW": 1, "RW": 1, "GW": 1, "BU": 1, "GU": 1, "BR": 1, "BG": 1, "GR": 1,
           "total lands": 1, "Indatha Triome (Triome WBG)": 1, "sumTriomes": 1},
-        "Zagoth Triome (Triome UBG)": {"u": 1, "b": 1, "g": 1, "opt": scoreTriomes,
+        "Zagoth Triome (Triome UBG)": {"U": 1, "B": 1, "G": 1, "opt": scoreTriomes,
+          "UW": 1, "BW": 1, "GW": 1, "BU": 1, "RU": 1, "GU": 1, "BR": 1, "BG": 1, "GR": 1,
           "total lands": 1, "Zagoth Triome (Triome UBG)": 1, "sumTriomes": 1},
-        "Ketria Triome (Triome URG)": {"u": 1, "r": 1, "g": 1, "opt": scoreTriomes,
+        "Ketria Triome (Triome URG)": {"U": 1, "R": 1, "G": 1, "opt": scoreTriomes,
+          "UW": 1, "RW": 1, "GW": 1, "BU": 1, "RU": 1, "GU": 1, "BR": 1, "BG": 1, "GR": 1,
           "total lands": 1, "Ketria Triome (Triome URG)": 1, "sumTriomes": 1},
 
-        "Glacial Fortress (Check WU)": {"w": 1, "u": 1, "opt": scoreChecks,
+        "Glacial Fortress (Check WU)": {"W": 1, "U": 1, "opt": scoreChecks,
+          "UW": 1, "BW": 1, "RW": 1, "GW": 1, "BU": 1, "RU": 1, "GU": 1,
           "total lands": 1, "Glacial Fortress (Check WU)": 1, "sumChecks": 1},
-        "Isolated Chapel (Check WB)": {"w": 1, "b": 1, "opt": scoreChecks,
+        "Isolated Chapel (Check WB)": {"W": 1, "B": 1, "opt": scoreChecks,
+          "UW": 1, "BW": 1, "RW": 1, "GW": 1, "BU": 1, "BR": 1, "BG": 1,
           "total lands": 1, "Isolated Chapel (Check WB)": 1, "sumChecks": 1},
-        "Clifftop Retreat (Check WR)": {"w": 1, "r": 1, "opt": scoreChecks,
+        "Clifftop Retreat (Check WR)": {"W": 1, "R": 1, "opt": scoreChecks,
+          "UW": 1, "BW": 1, "RW": 1, "GW": 1, "RU": 1, "BR": 1, "GR": 1,
           "total lands": 1, "Clifftop Retreat (Check WR)": 1, "sumChecks": 1},
-        "Sunpetal Grove (Check WG)": {"w": 1, "g": 1, "opt": scoreChecks,
+        "Sunpetal Grove (Check WG)": {"W": 1, "G": 1, "opt": scoreChecks,
+          "UW": 1, "BW": 1, "RW": 1, "GW": 1, "GU": 1, "BG": 1, "GR": 1,
           "total lands": 1, "Sunpetal Grove (Check WG)": 1, "sumChecks": 1},
-        "Drowned Catacomb (Check UB)": {"u": 1, "b": 1, "opt": scoreChecks,
+        "Drowned Catacomb (Check UB)": {"U": 1, "B": 1, "opt": scoreChecks,
+          "UW": 1, "BW": 1, "BU": 1, "RU": 1, "GU": 1, "BR": 1, "BG": 1,
           "total lands": 1, "Drowned Catacomb (Check UB)": 1, "sumChecks": 1},
-        "Sulfur Falls (Check UR)": {"u": 1, "r": 1, "opt": scoreChecks,
+        "Sulfur Falls (Check UR)": {"U": 1, "R": 1, "opt": scoreChecks,
+          "UW": 1, "RW": 1, "BU": 1, "RU": 1, "GU": 1, "BR": 1, "GR": 1,
           "total lands": 1, "Sulfur Falls (Check UR)": 1, "sumChecks": 1},
-        "Hinterland Harbor (Check UG)": {"u": 1, "g": 1, "opt": scoreChecks,
+        "Hinterland Harbor (Check UG)": {"U": 1, "G": 1, "opt": scoreChecks,
+          "UW": 1, "GW": 1, "BU": 1, "RU": 1, "GU": 1, "BG": 1, "GR": 1,
           "total lands": 1, "Hinterland Harbor (Check UG)": 1, "sumChecks": 1},
-        "Dragonskull Summit (Check BR)": {"b": 1, "r": 1, "opt": scoreChecks,
+        "Dragonskull Summit (Check BR)": {"B": 1, "R": 1, "opt": scoreChecks,
+          "BW": 1, "RW": 1, "BU": 1, "RU": 1, "BR": 1, "BG": 1, "GR": 1,
           "total lands": 1, "Dragonskull Summit (Check BR)": 1, "sumChecks": 1},
-        "Woodland Cemetery (Check BG)": {"b": 1, "g": 1, "opt": scoreChecks,
+        "Woodland Cemetery (Check BG)": {"B": 1, "G": 1, "opt": scoreChecks,
+          "BW": 1, "GW": 1, "BU": 1, "GU": 1, "BR": 1, "BG": 1, "GR": 1,
           "total lands": 1, "Woodland Cemetery (Check BG)": 1, "sumChecks": 1},
-        "Rootbound Crag (Check RG)": {"r": 1, "g": 1, "opt": scoreChecks,
+        "Rootbound Crag (Check RG)": {"R": 1, "G": 1, "opt": scoreChecks,
+          "RW": 1, "GW": 1, "RU": 1, "GU": 1, "BR": 1, "BG": 1, "GR": 1,
           "total lands": 1, "Rootbound Crag (Check RG)": 1, "sumChecks": 1},
       }
 
@@ -163,11 +286,22 @@
         "opType": "max",
         "constraints": {
           "total lands": {"equal": numberOfLands - sumCastles},
-          "w": {"min": w},
-          "u": {"min": u},
-          "b": {"min": b},
-          "r": {"min": r},
-          "g": {"min": g},
+          "W": {"min": requiredW},
+          "U": {"min": requiredU},
+          "B": {"min": requiredB},
+          "R": {"min": requiredR},
+          "G": {"min": requiredG},
+
+          "UW": {"min": requiredUW},
+          "BW": {"min": requiredBW},
+          "RW": {"min": requiredRW},
+          "GW": {"min": requiredGW},
+          "BU": {"min": requiredBU},
+          "RU": {"min": requiredRU},
+          "GU": {"min": requiredGU},
+          "BR": {"min": requiredBR},
+          "BG": {"min": requiredBG},
+          "GR": {"min": requiredGR},
 
           "Plains (Basic W)": {"min": 0, "max": 999},
           "Island (Basic U)": {"min": 0, "max": 999},
@@ -180,11 +314,11 @@
           // if running Fabled Passage enforce more basics than Fabled Passages
           "Basics - Fabled Passages - (Fabled Passages > 0)": {"min": 0},
           // if we want any white make sure we get a plains when running a Fabled Passage
-          "Plains - (Fabled Passages > 0)": {"min": w > 0 ? 0 : -100},
-          "Islands - (Fabled Passages > 0)": {"min": u > 0 ? 0 : -100},
-          "Swamps - (Fabled Passages > 0)": {"min": b > 0 ? 0 : -100},
-          "Mountains - (Fabled Passages > 0)": {"min": r > 0 ? 0 : -100},
-          "Forests - (Fabled Passages > 0)": {"min": g > 0 ? 0 : -100},
+          "Plains - (Fabled Passages > 0)": {"min": requiredW > 0 ? 0 : -100},
+          "Islands - (Fabled Passages > 0)": {"min": requiredU > 0 ? 0 : -100},
+          "Swamps - (Fabled Passages > 0)": {"min": requiredB > 0 ? 0 : -100},
+          "Mountains - (Fabled Passages > 0)": {"min": requiredR > 0 ? 0 : -100},
+          "Forests - (Fabled Passages > 0)": {"min": requiredG > 0 ? 0 : -100},
 
           "Hallowed Fountain (Shock WU)": {"min": 0, "max": 4},
           "Godless Shrine (Shock WB)": {"min": 0, "max": 4},
@@ -250,7 +384,7 @@
         })
         document.getElementById("solution").innerHTML = output
       } else {
-        document.getElementById("solution").innerHTML = "impossible"
+        document.getElementById("solution").innerHTML = "impossible - try increasing total number of lands"
         document.getElementById("actualTotalLands").innerHTML = ""
         document.getElementById("actualW").innerHTML = ""
         document.getElementById("actualU").innerHTML = ""
@@ -260,13 +394,22 @@
         return
       }
 
-
       var actualTotalLands = sumCastles
       var actualW = castleW
       var actualU = castleU
       var actualB = castleB
       var actualR = castleR
       var actualG = castleG
+      var actualUW = 0
+      var actualBW = 0
+      var actualRW = 0
+      var actualGW = 0
+      var actualBU = 0
+      var actualRU = 0
+      var actualGU = 0
+      var actualBR = 0
+      var actualBG = 0
+      var actualGR = 0
       Object.keys(solution).forEach(function(prop) {
         if (Object.keys(variables).includes(prop)) {
           actualTotalLands += solution[prop]
@@ -276,12 +419,32 @@
             actualB += solution["Swamp (Basic B)"] > 0 ? solution[prop] : 0
             actualR += solution["Mountain (Basic R)"] > 0 ? solution[prop] : 0
             actualG += solution["Forest (Basic G)"] > 0 ? solution[prop] : 0
+            actualUW += (solution["Plains (Basic W)"] > 0 || solution["Island (Basic U)"] > 0) ? solution[prop] : 0
+            actualBW += (solution["Plains (Basic W)"] > 0 || solution["Swamp (Basic B)"] > 0) ? solution[prop] : 0
+            actualRW += (solution["Plains (Basic W)"] > 0 || solution["Mountain (Basic R)"] > 0) ? solution[prop] : 0
+            actualGW += (solution["Plains (Basic W)"] > 0 || solution["Forest (Basic G)"] > 0) ? solution[prop] : 0
+            actualBU += (solution["Island (Basic U)"] > 0 || solution["Swamp (Basic B)"] > 0) ? solution[prop] : 0
+            actualRU += (solution["Island (Basic U)"] > 0 || solution["Mountain (Basic R)"] > 0) ? solution[prop] : 0
+            actualGU += (solution["Island (Basic U)"] > 0 || solution["Forest (Basic G)"] > 0) ? solution[prop] : 0
+            actualBR += (solution["Swamp (Basic B)"] > 0 || solution["Mountain (Basic R)"] > 0) ? solution[prop] : 0
+            actualBG += (solution["Swamp (Basic B)"] > 0 || solution["Forest (Basic G)"] > 0) ? solution[prop] : 0
+            actualGR += (solution["Mountain (Basic R)"] > 0 || solution["Forest (Basic G)"] > 0) ? solution[prop] : 0
           } else {
-            actualW += solution[prop] * (variables[prop]["w"] || 0)
-            actualU += solution[prop] * (variables[prop]["u"] || 0)
-            actualB += solution[prop] * (variables[prop]["b"] || 0)
-            actualR += solution[prop] * (variables[prop]["r"] || 0)
-            actualG += solution[prop] * (variables[prop]["g"] || 0)
+            actualW += solution[prop] * (variables[prop]["W"] || 0)
+            actualU += solution[prop] * (variables[prop]["U"] || 0)
+            actualB += solution[prop] * (variables[prop]["B"] || 0)
+            actualR += solution[prop] * (variables[prop]["R"] || 0)
+            actualG += solution[prop] * (variables[prop]["G"] || 0)
+            actualUW += solution[prop] * (variables[prop]["UW"] || 0)
+            actualBW += solution[prop] * (variables[prop]["BW"] || 0)
+            actualRW += solution[prop] * (variables[prop]["RW"] || 0)
+            actualGW += solution[prop] * (variables[prop]["GW"] || 0)
+            actualBU += solution[prop] * (variables[prop]["BU"] || 0)
+            actualRU += solution[prop] * (variables[prop]["RU"] || 0)
+            actualGU += solution[prop] * (variables[prop]["GU"] || 0)
+            actualBR += solution[prop] * (variables[prop]["BR"] || 0)
+            actualBG += solution[prop] * (variables[prop]["BG"] || 0)
+            actualGR += solution[prop] * (variables[prop]["GR"] || 0)
           }
         }
       })
@@ -291,6 +454,16 @@
       document.getElementById("actualB").innerHTML = actualB
       document.getElementById("actualR").innerHTML = actualR
       document.getElementById("actualG").innerHTML = actualG
+      document.getElementById("actualUW").innerHTML = actualUW
+      document.getElementById("actualBW").innerHTML = actualBW
+      document.getElementById("actualRW").innerHTML = actualRW
+      document.getElementById("actualGW").innerHTML = actualGW
+      document.getElementById("actualBU").innerHTML = actualBU
+      document.getElementById("actualRU").innerHTML = actualRU
+      document.getElementById("actualGU").innerHTML = actualGU
+      document.getElementById("actualBR").innerHTML = actualBR
+      document.getElementById("actualBG").innerHTML = actualBG
+      document.getElementById("actualGR").innerHTML = actualGR
 
       document.getElementById("donate").classList.remove("d-none")
     }
@@ -299,78 +472,228 @@
 <body>
   <div class="content my-4">
     <h1>MtG Manabase Builder</h1>
+    <form onsubmit="deriveColorRequirements(); return false">
+      <div class="form-group row">
+        <label class="col-2 col-form-label" for="xInManaCost">count <img src="https://gamepedia.cursecdn.com/mtgsalvation_gamepedia/3/3f/X.svg" width="36px" height="36px"/> as</label>
+        <div class="col-2">
+          <input id="xInManaCost" type="number" class="form-control" value="1" required>
+        </div>
+      </div>
+
+      <div class="form-group row">
+        <label class="col-4 col-form-label" for="deck">deck export from MtG Arena</label>
+        <div class="col"><textarea id="deck" class="row" cols="40"></textarea></div>
+      </div>
+
+      <button type="submit" class="btn btn-primary">Derive Color Requirements</button>
+    </form>
     <form class="my-3" onsubmit="solveManabase(); return false">
       <div class="form-group row">
-        <div class="col"></div>
-        <div class="col"></div>
+        <div class="col-4"></div>
         <div class="col">required</div>
         <div class="col">castles</div>
         <div class="col">actual</div>
       </div>
+
       <div class="form-group row">
-        <label class="col col-form-label" for="total lands">total lands</label>
-        <img src="https://gamepedia.cursecdn.com/mtgsalvation_gamepedia/1/1a/C.svg" height="36px" class="col"/>
+        <label class="col-4 col-form-label" for="total lands">total number of lands</label>
         <div class="col">
-          <input id="total lands" type="number" class="form-control" placeholder="0" required>
+          <input id="total lands" type="number" class="form-control" value="24" required>
         </div>
         <div class="col"></div>
         <div id="actualTotalLands" class="col"></div>
       </div>
+
       <div class="form-group row">
-        <label class="col col-form-label" for="w">white sources</label>
-        <img src="https://gamepedia.cursecdn.com/mtgsalvation_gamepedia/8/8e/W.svg" height="36px" class="col"/>
+        <label class="col-4 col-form-label" for="W">
+          number of lands producing
+          <img src="https://gamepedia.cursecdn.com/mtgsalvation_gamepedia/8/8e/W.svg" height="36px" alt="white mana"/>
+        </label>
         <div class="col">
-          <input id="w" type="number" class="form-control" placeholder="0">
+          <input id="W" type="number" class="form-control" placeholder="0">
         </div>
         <div class="col">
           <input id="castleW" type="number" class="form-control" placeholder="0">
         </div>
         <div id="actualW" class="col"></div>
       </div>
+
       <div class="form-group row">
-        <label class="col col-form-label" for="u">blue sources</label>
-        <img src="https://gamepedia.cursecdn.com/mtgsalvation_gamepedia/9/9f/U.svg" height="36px" class="col"/>
+        <label class="col-4 col-form-label" for="U">
+          number of lands producing
+          <img src="https://gamepedia.cursecdn.com/mtgsalvation_gamepedia/9/9f/U.svg" height="36px" alt="blue mana"/>
+        </label>
         <div class="col">
-          <input id="u" type="number" class="form-control" placeholder="0">
+          <input id="U" type="number" class="form-control" placeholder="0">
         </div>
         <div class="col">
           <input id="castleU" type="number" class="form-control" placeholder="0">
         </div>
         <div id="actualU" class="col"></div>
       </div>
+
       <div class="form-group row">
-        <label class="col col-form-label" for="b">black sources</label>
-        <img src="https://gamepedia.cursecdn.com/mtgsalvation_gamepedia/2/2f/B.svg" height="36px" class="col"/>
+        <label class="col-4 col-form-label" for="B">
+          number of lands producing
+          <img src="https://gamepedia.cursecdn.com/mtgsalvation_gamepedia/2/2f/B.svg" height="36px" alt="black mana"/>
+        </label>
         <div class="col">
-          <input id="b" type="number" class="form-control" placeholder="0">
+          <input id="B" type="number" class="form-control" placeholder="0">
         </div>
         <div class="col">
           <input id="castleB" type="number" class="form-control" placeholder="0">
         </div>
         <div id="actualB" class="col"></div>
       </div>
+
       <div class="form-group row">
-        <label class="col col-form-label" for="r">red sources</label>
-        <img src="https://gamepedia.cursecdn.com/mtgsalvation_gamepedia/8/87/R.svg" height="36px" class="col"/>
+        <label class="col-4 col-form-label" for="R">
+          number of lands producing
+          <img src="https://gamepedia.cursecdn.com/mtgsalvation_gamepedia/8/87/R.svg" height="36px" alt="red mana"/>
+        </label>
         <div class="col">
-          <input id="r" type="number" class="form-control" placeholder="0">
+          <input id="R" type="number" class="form-control" placeholder="0">
         </div>
         <div class="col">
           <input id="castleR" type="number" class="form-control" placeholder="0">
         </div>
         <div id="actualR" class="col"></div>
       </div>
+
       <div class="form-group row">
-        <label class="col col-form-label" for="g">green sources</label>
-        <img src="https://gamepedia.cursecdn.com/mtgsalvation_gamepedia/8/88/G.svg" height="36px" class="col"/>
+        <label class="col-4 col-form-label" for="G">
+          number of lands producing
+          <img src="https://gamepedia.cursecdn.com/mtgsalvation_gamepedia/8/88/G.svg" height="36px" alt="green mana"/>
+        </label>
         <div class="col">
-          <input id="g" type="number" class="form-control" placeholder="0">
+          <input id="G" type="number" class="form-control" placeholder="0">
         </div>
         <div class="col">
           <input id="castleG" type="number" class="form-control" placeholder="0">
         </div>
         <div id="actualG" class="col"></div>
       </div>
+
+      <div class="form-group row">
+        <label class="col-4 col-form-label" for="UW">
+          number of lands producing
+          <img src="https://gamepedia.cursecdn.com/mtgsalvation_gamepedia/3/39/WU.svg" height="36px" alt="white or blue mana"/>
+        </label>
+        <div class="col">
+          <input id="UW" type="number" class="form-control" placeholder="0">
+        </div>
+        <div class="col"></div>
+        <div id="actualUW" class="col"></div>
+      </div>
+
+      <div class="form-group row">
+        <label class="col-4 col-form-label" for="BW">
+          number of lands producing
+          <img src="https://gamepedia.cursecdn.com/mtgsalvation_gamepedia/a/a6/WB.svg" height="36px" alt="white or black mana"/>
+        </label>
+        <div class="col">
+          <input id="BW" type="number" class="form-control" placeholder="0">
+        </div>
+        <div class="col"></div>
+        <div id="actualBW" class="col"></div>
+      </div>
+
+      <div class="form-group row">
+        <label class="col-4 col-form-label" for="RW">
+          number of lands producing
+          <img src="https://gamepedia.cursecdn.com/mtgsalvation_gamepedia/6/6b/RW.svg" height="36px" alt="red or white mana"/>
+        </label>
+        <div class="col">
+          <input id="RW" type="number" class="form-control" placeholder="0">
+        </div>
+        <div class="col"></div>
+        <div id="actualRW" class="col"></div>
+      </div>
+
+      <div class="form-group row">
+        <label class="col-4 col-form-label" for="GW">
+          number of lands producing
+          <img src="https://gamepedia.cursecdn.com/mtgsalvation_gamepedia/2/2e/GW.svg" height="36px" alt="green or white mana"/>
+        </label>
+        <div class="col">
+          <input id="GW" type="number" class="form-control" placeholder="0">
+        </div>
+        <div class="col"></div>
+        <div id="actualGW" class="col"></div>
+      </div>
+
+      <div class="form-group row">
+        <label class="col-4 col-form-label" for="BU">
+          number of lands producing
+          <img src="https://gamepedia.cursecdn.com/mtgsalvation_gamepedia/1/13/UB.svg" height="36px" alt="blue or black mana"/>
+        </label>
+        <div class="col">
+          <input id="BU" type="number" class="form-control" placeholder="0">
+        </div>
+        <div class="col"></div>
+        <div id="actualBU" class="col"></div>
+      </div>
+
+      <div class="form-group row">
+        <label class="col-4 col-form-label" for="RU">
+          number of lands producing
+          <img src="https://gamepedia.cursecdn.com/mtgsalvation_gamepedia/0/09/UR.svg" height="36px" alt="blue or red mana"/>
+        </label>
+        <div class="col">
+          <input id="RU" type="number" class="form-control" placeholder="0">
+        </div>
+        <div class="col"></div>
+        <div id="actualRU" class="col"></div>
+      </div>
+
+      <div class="form-group row">
+        <label class="col-4 col-form-label" for="GU">
+          number of lands producing
+          <img src="https://gamepedia.cursecdn.com/mtgsalvation_gamepedia/6/6f/GU.svg" height="36px" alt="green or blue mana"/>
+        </label>
+        <div class="col">
+          <input id="GU" type="number" class="form-control" placeholder="0">
+        </div>
+        <div class="col"></div>
+        <div id="actualGU" class="col"></div>
+      </div>
+
+      <div class="form-group row">
+        <label class="col-4 col-form-label" for="BR">
+          number of lands producing
+          <img src="https://gamepedia.cursecdn.com/mtgsalvation_gamepedia/b/bf/BR.svg" height="36px" alt="black or red mana"/>
+        </label>
+        <div class="col">
+          <input id="BR" type="number" class="form-control" placeholder="0">
+        </div>
+        <div class="col"></div>
+        <div id="actualBR" class="col"></div>
+      </div>
+
+      <div class="form-group row">
+        <label class="col-4 col-form-label" for="BG">
+          number of lands producing
+          <img src="https://gamepedia.cursecdn.com/mtgsalvation_gamepedia/6/62/BG.svg" height="36px" alt="black or green mana"/>
+        </label>
+        <div class="col">
+          <input id="BG" type="number" class="form-control" placeholder="0">
+        </div>
+        <div class="col"></div>
+        <div id="actualBG" class="col"></div>
+      </div>
+
+      <div class="form-group row">
+        <label class="col-4 col-form-label" for="GR">
+          number of lands producing
+          <img src="https://gamepedia.cursecdn.com/mtgsalvation_gamepedia/2/24/RG.svg" height="36px" alt="red or green mana"/>
+        </label>
+        <div class="col">
+          <input id="GR" type="number" class="form-control" placeholder="0">
+        </div>
+        <div class="col"></div>
+        <div id="actualGR" class="col"></div>
+      </div>
+
       <button type="submit" class="btn btn-primary">Submit</button>
     </form>
 
@@ -390,7 +713,9 @@
     </div>
 
     <form onsubmit="solveManabase(); return false" class="border border-dark p-2 col-sm-8 my-3">
-      <div class="mb-3">color requirements will ALWAYS be met, further optimization takes the following scores into account</div>
+      <div class="mb-3">
+        color requirements and min/max will ALWAYS be met, further optimization takes scores into account
+      </div>
       <div class="form-group row">
         <div class="col"></div>
         <div class="col">score</div>
