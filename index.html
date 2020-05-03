@@ -26,6 +26,95 @@
       7: { 1: 7,  2: 11, 3: 14, 4: 17, 5: 20, 6: 22, 7: 24 },
     }
 
+    var landNames = [
+      "Azorius Guildgate",
+      "Blast Zone",
+      "Blood Crypt",
+      "Bloodfell Caves",
+      "Blossoming Sands",
+      "Bonders' Enclave",
+      "Boros Guildgate",
+      "Breeding Pool",
+      "Castle Ardenvale",
+      "Castle Embereth",
+      "Castle Garenbrig",
+      "Castle Locthwain",
+      "Castle Vantress",
+      "Command Tower",
+      "Cryptic Caves",
+      "Dimir Guildgate",
+      "Dismal Backwater",
+      "Dwarven Mine",
+      "Emergence Zone",
+      "Evolving Wilds",
+      "Fabled Passage",
+      "Field of Ruin",
+      "Forest",
+      "Gateway Plaza",
+      "Gingerbread Cabin",
+      "Godless Shrine",
+      "Golgari Guildgate",
+      "Gruul Guildgate",
+      "Guildmages' Forum",
+      "Hallowed Fountain",
+      "Idyllic Grange",
+      "Indatha Triome",
+      "Interplanar Beacon",
+      "Island",
+      "Izzet Guildgate",
+      "Jungle Hollow",
+      "Karn's Bastion",
+      "Ketria Triome",
+      "Labyrinth of Skophos",
+      "Lotus Field",
+      "Mobilized District",
+      "Mountain",
+      "Mystic Sanctuary",
+      "Orzhov Guildgate",
+      "Overgrown Tomb",
+      "Plains",
+      "Plaza of Harmony",
+      "Rakdos Guildgate",
+      "Raugrin Triome",
+      "Rugged Highlands",
+      "Sacred Foundry",
+      "Savai Triome",
+      "Scoured Barrens",
+      "Selesnya Guildgate",
+      "Simic Guildgate",
+      "Steam Vents",
+      "Stomping Ground",
+      "Swamp",
+      "Swiftwater Cliffs",
+      "Temple Garden",
+      "Temple of Abandon",
+      "Temple of Deceit",
+      "Temple of Enlightenment",
+      "Temple of Epiphany",
+      "Temple of Malady",
+      "Temple of Malice",
+      "Temple of Mystery",
+      "Temple of Plenty",
+      "Temple of Silence",
+      "Temple of Triumph",
+      "Thornwood Falls",
+      "Tournament Grounds",
+      "Tranquil Cove",
+      "Unknown Shores",
+      "Watery Grave",
+      "Wind-Scarred Crag",
+      "Witch's Cottage",
+      "Zagoth Triome"
+    ]
+
+    var castleNames = [
+      "Castle Ardenvale",
+      "Castle Embereth",
+      "Castle Garenbrig",
+      "Castle Locthwain",
+      "Castle Vantress"
+    ]
+
     function getInt(id) {
       return parseInt(document.getElementById(id).value || 0, 10)
     }
@@ -62,25 +151,49 @@
 
     function deriveColorRequirements() {
       var solutionPre = document.getElementById("solutionPre")
-      solutionPre.innerHTML = "Parsing decklist..."
+      solutionPre.innerHTML = "Reading decklist..."
       var xInManaCost = getInt("xInManaCost")
       var deck = document.getElementById("deck").value
-      var json = JSON.stringify({
-        "identifiers": deck.split("\n").filter(Boolean).map(function(line) {
-          var line_split = line.split(" ")
-          return {
-            "name": line_split.slice(1, -2).join(" "),
-            "set": line_split[line_split.length - 2].slice(1, -1),
-            "collector_number": line_split[line_split.length - 1]
-          }
-        })
-      })
 
-      var required = {}
+      var numberOfNonLandCards = 0
+      var numberOfLandsInDeck = 0
+      var sideboard = false
+      var expectedDeckSize = 60
+
+      var scryfallIdentifiers = []
+      deck.split("\n").forEach(function(line) {
+        if (line === "") {
+          sideboard = true
+        } else {
+          var line_split = line.split(" ")
+          var name = line_split.slice(1, -2).join(" ")
+          var numberOfCopies = parseInt(line_split[0]) || 0
+
+          if (landNames.includes(name)) {
+            numberOfLandsInDeck += sideboard ? 0 : numberOfCopies
+            if (castleNames.includes(name)) {
+              document.getElementById(name).value = numberOfCopies
+            }
+          } else {
+            if (sideboard && name === "Yorion, Sky Nomad") {
+              expectedDeckSize = 80
+            }
+            numberOfNonLandCards += sideboard ? 0 : numberOfCopies
+            scryfallIdentifiers.push({
+              name: name,
+              "set": line_split[line_split.length - 2].slice(1, -1),
+              collector_number: line_split[line_split.length - 1]
+            })
+          }
+        }
+      })
 
       var xhttp = new XMLHttpRequest()
       xhttp.onreadystatechange = function() {
         if (this.readyState == 4 && this.status == 200) {
+          var required = {
+            numberOfLands: numberOfLandsInDeck >= 15 ? numberOfLandsInDeck : expectedDeckSize - numberOfNonLandCards
+          }
           var answer = JSON.parse(this.response)
           answer.data.forEach(function (card) {
             if (card.cmc > 0) {
@@ -104,18 +217,18 @@
       xhttp.open("POST", "https://api.scryfall.com/cards/collection", true)
       xhttp.setRequestHeader("Content-type", "application/json")
       solutionPre.innerHTML = "Requesting mana costs from Scryfall..."
-      xhttp.send(json)
+      xhttp.send(JSON.stringify({ "identifiers": scryfallIdentifiers }))
     }
 
     function solveManabase() {
       var solutionPre = document.getElementById("solutionPre")
       solutionPre.innerHTML = "Solving mana base..."
-      var numberOfLands = getInt("total lands")
-      var castleW = getInt("castleW")
-      var castleU = getInt("castleU")
-      var castleB = getInt("castleB")
-      var castleR = getInt("castleR")
-      var castleG = getInt("castleG")
+      var numberOfLands = getInt("numberOfLands")
+      var castleW = getInt("Castle Ardenvale")
+      var castleU = getInt("Castle Vantress")
+      var castleB = getInt("Castle Locthwain")
+      var castleR = getInt("Castle Embereth")
+      var castleG = getInt("Castle Garenbrig")
       var isRequiredW = getInt("W") > 0 ? 1 : 0
       var isRequiredU = getInt("U") > 0 ? 1 : 0
       var isRequiredB = getInt("B") > 0 ? 1 : 0
@@ -159,26 +272,26 @@
 
       var variables = {
         "Plains (Basic W)": {"W": 1, "UW": 1, "BW": 1, "RW": 1, "GW": 1, "opt": scoreBasics + isRequiredW,
-          "total lands": 1, "Plains (Basic W)": 1,
+          "numberOfLands": 1, "Plains (Basic W)": 1,
           "Basics - Fabled Passages - (Fabled Passages > 0)": 1, "Plains - (Fabled Passages > 0)": 1, "sumBasics": 1},
         "Island (Basic U)": {"U": 1, "UW": 1, "BU": 1, "RU": 1, "GU": 1, "opt": scoreBasics + isRequiredU,
-          "total lands": 1, "Island (Basic U)": 1,
+          "numberOfLands": 1, "Island (Basic U)": 1,
           "Basics - Fabled Passages - (Fabled Passages > 0)": 1, "Islands - (Fabled Passages > 0)": 1, "sumBasics": 1},
         "Swamp (Basic B)": {"B": 1, "BW": 1, "BU": 1, "BR": 1, "BG": 1, "opt": scoreBasics + isRequiredB,
-          "total lands": 1, "Swamp (Basic B)": 1,
+          "numberOfLands": 1, "Swamp (Basic B)": 1,
           "Basics - Fabled Passages - (Fabled Passages > 0)": 1, "Swamps - (Fabled Passages > 0)": 1, "sumBasics": 1},
         "Mountain (Basic R)": {"R": 1, "RW": 1, "RU": 1, "BR": 1, "GR": 1, "opt": scoreBasics + isRequiredR,
-          "total lands": 1, "Mountain (Basic R)": 1,
+          "numberOfLands": 1, "Mountain (Basic R)": 1,
           "Basics - Fabled Passages - (Fabled Passages > 0)": 1, "Mountains - (Fabled Passages > 0)": 1, "sumBasics": 1},
         "Forest (Basic G)": {"G": 1, "GW": 1, "GU": 1, "BG": 1, "GR": 1, "opt": scoreBasics + isRequiredG,
-          "total lands": 1, "Forest (Basic G)": 1,
+          "numberOfLands": 1, "Forest (Basic G)": 1,
           "Basics - Fabled Passages - (Fabled Passages > 0)": 1, "Forests - (Fabled Passages > 0)": 1, "sumBasics": 1},
 
         "Fabled Passage": {"W": fractionFP, "U": fractionFP, "B": fractionFP, "R": fractionFP, "G": fractionFP,
           "UW": fractionFP, "BW": fractionFP, "RW": fractionFP, "GW": fractionFP, "BU": fractionFP,
           "RU": fractionFP, "GU": fractionFP, "BR": fractionFP, "BG": fractionFP, "GR": fractionFP,
           "opt": scoreFabledPassage,
-          "total lands": 1, "Fabled Passage": 1,
+          "numberOfLands": 1, "Fabled Passage": 1,
           "Basics - Fabled Passages - (Fabled Passages > 0)": -1.25,
           "Plains - (Fabled Passages > 0)": -0.25,
           "Islands - (Fabled Passages > 0)": -0.25,
@@ -188,112 +301,112 @@
 
         "Hallowed Fountain (Shock WU)": {"W": 1, "U": 1, "opt": scoreShocks,
           "UW": 1, "BW": 1, "RW": 1, "GW": 1, "BU": 1, "RU": 1, "GU": 1,
-          "total lands": 1, "Hallowed Fountain (Shock WU)": 1, "sumShocks": 1},
+          "numberOfLands": 1, "Hallowed Fountain (Shock WU)": 1, "sumShocks": 1},
         "Godless Shrine (Shock WB)": {"W": 1, "B": 1, "opt": scoreShocks,
           "UW": 1, "BW": 1, "RW": 1, "GW": 1, "BU": 1, "BR": 1, "BG": 1,
-          "total lands": 1, "Godless Shrine (Shock WB)": 1, "sumShocks": 1},
+          "numberOfLands": 1, "Godless Shrine (Shock WB)": 1, "sumShocks": 1},
         "Sacred Foundry (Shock WR)": {"W": 1, "R": 1, "opt": scoreShocks,
           "UW": 1, "BW": 1, "RW": 1, "GW": 1, "RU": 1, "BR": 1, "GR": 1,
-          "total lands": 1, "Sacred Foundry (Shock WR)": 1, "sumShocks": 1},
+          "numberOfLands": 1, "Sacred Foundry (Shock WR)": 1, "sumShocks": 1},
         "Temple Garden (Shock WG)": {"W": 1, "G": 1, "opt": scoreShocks,
           "UW": 1, "BW": 1, "RW": 1, "GW": 1, "GU": 1, "BG": 1, "GR": 1,
-          "total lands": 1, "Temple Garden (Shock WG)": 1, "sumShocks": 1},
+          "numberOfLands": 1, "Temple Garden (Shock WG)": 1, "sumShocks": 1},
         "Watery Grave (Shock UB)": {"U": 1, "B": 1, "opt": scoreShocks,
           "UW": 1, "BW": 1, "BU": 1, "RU": 1, "GU": 1, "BR": 1, "BG": 1,
-          "total lands": 1, "Watery Grave (Shock UB)": 1, "sumShocks": 1},
+          "numberOfLands": 1, "Watery Grave (Shock UB)": 1, "sumShocks": 1},
         "Steam Vents (Shock UR)": {"U": 1, "R": 1, "opt": scoreShocks,
           "UW": 1, "RW": 1, "BU": 1, "RU": 1, "GU": 1, "BR": 1, "GR": 1,
-          "total lands": 1, "Steam Vents (Shock UR)": 1, "sumShocks": 1},
+          "numberOfLands": 1, "Steam Vents (Shock UR)": 1, "sumShocks": 1},
         "Breeding Pool (Shock UG)": {"U": 1, "G": 1, "opt": scoreShocks,
           "UW": 1, "GW": 1, "BU": 1, "RU": 1, "GU": 1, "BG": 1, "GR": 1,
-          "total lands": 1, "Breeding Pool (Shock UG)": 1, "sumShocks": 1},
+          "numberOfLands": 1, "Breeding Pool (Shock UG)": 1, "sumShocks": 1},
         "Blood Crypt (Shock BR)": {"B": 1, "R": 1, "opt": scoreShocks,
           "BW": 1, "RW": 1, "BU": 1, "RU": 1, "BR": 1, "BG": 1, "GR": 1,
-          "total lands": 1, "Blood Crypt (Shock BR)": 1, "sumShocks": 1},
+          "numberOfLands": 1, "Blood Crypt (Shock BR)": 1, "sumShocks": 1},
         "Overgrown Tomb (Shock BG)": {"B": 1, "G": 1, "opt": scoreShocks,
           "BW": 1, "GW": 1, "BU": 1, "GU": 1, "BR": 1, "BG": 1, "GR": 1,
-          "total lands": 1, "Overgrown Tomb (Shock BG)": 1, "sumShocks": 1},
+          "numberOfLands": 1, "Overgrown Tomb (Shock BG)": 1, "sumShocks": 1},
         "Stomping Grounds (Shock RG)": {"R": 1, "G": 1, "opt": scoreShocks,
           "RW": 1, "GW": 1, "RU": 1, "GU": 1, "BR": 1, "BG": 1, "GR": 1,
-          "total lands": 1, "Stomping Grounds (Shock RG)": 1, "sumShocks": 1},
+          "numberOfLands": 1, "Stomping Grounds (Shock RG)": 1, "sumShocks": 1},
 
         "Temple of Enlightenment (Temple WU)": {"W": 1, "U": 1, "opt": scoreTemples,
           "UW": 1, "BW": 1, "RW": 1, "GW": 1, "BU": 1, "RU": 1, "GU": 1,
-          "total lands": 1, "Temple of Enlightenment (Temple WU)": 1, "sumTemples": 1},
+          "numberOfLands": 1, "Temple of Enlightenment (Temple WU)": 1, "sumTemples": 1},
         "Temple of Silence (Temple WB)": {"W": 1, "B": 1, "opt": scoreTemples,
           "UW": 1, "BW": 1, "RW": 1, "GW": 1, "BU": 1, "BR": 1, "BG": 1,
-          "total lands": 1, "Temple of Silence (Temple WB)": 1, "sumTemples": 1},
+          "numberOfLands": 1, "Temple of Silence (Temple WB)": 1, "sumTemples": 1},
         "Temple of Triumph (Temple WR)": {"W": 1, "R": 1, "opt": scoreTemples,
           "UW": 1, "BW": 1, "RW": 1, "GW": 1, "RU": 1, "BR": 1, "GR": 1,
-          "total lands": 1, "Temple of Triumph (Temple WR)": 1, "sumTemples": 1},
+          "numberOfLands": 1, "Temple of Triumph (Temple WR)": 1, "sumTemples": 1},
         "Temple of Plenty (Temple WG)": {"W": 1, "G": 1, "opt": scoreTemples,
           "UW": 1, "BW": 1, "RW": 1, "GW": 1, "GU": 1, "BG": 1, "GR": 1,
-          "total lands": 1, "Temple of Plenty (Temple WG)": 1, "sumTemples": 1},
+          "numberOfLands": 1, "Temple of Plenty (Temple WG)": 1, "sumTemples": 1},
         "Temple of Deceit (Temple UB)": {"U": 1, "B": 1, "opt": scoreTemples,
           "UW": 1, "BW": 1, "BU": 1, "RU": 1, "GU": 1, "BR": 1, "BG": 1,
-          "total lands": 1, "Temple of Deceit (Temple UB)": 1, "sumTemples": 1},
+          "numberOfLands": 1, "Temple of Deceit (Temple UB)": 1, "sumTemples": 1},
         "Temple of Epiphany (Temple UR)": {"U": 1, "R": 1, "opt": scoreTemples,
           "UW": 1, "RW": 1, "BU": 1, "RU": 1, "GU": 1, "BR": 1, "GR": 1,
-          "total lands": 1, "Temple of Epiphany (Temple UR)": 1, "sumTemples": 1},
+          "numberOfLands": 1, "Temple of Epiphany (Temple UR)": 1, "sumTemples": 1},
         "Temple of Mystery (Temple UG)": {"U": 1, "G": 1, "opt": scoreTemples,
           "UW": 1, "GW": 1, "BU": 1, "RU": 1, "GU": 1, "BG": 1, "GR": 1,
-          "total lands": 1, "Temple of Mystery (Temple UG)": 1, "sumTemples": 1},
+          "numberOfLands": 1, "Temple of Mystery (Temple UG)": 1, "sumTemples": 1},
         "Temple of Malice (Temple BR)": {"B": 1, "R": 1, "opt": scoreTemples,
           "BW": 1, "RW": 1, "BU": 1, "RU": 1, "BR": 1, "BG": 1, "GR": 1,
-          "total lands": 1, "Temple of Malice (Temple BR)": 1, "sumTemples": 1},
+          "numberOfLands": 1, "Temple of Malice (Temple BR)": 1, "sumTemples": 1},
         "Temple of Malady (Temple BG)": {"B": 1, "G": 1, "opt": scoreTemples,
           "BW": 1, "GW": 1, "BU": 1, "GU": 1, "BR": 1, "BG": 1, "GR": 1,
-          "total lands": 1, "Temple of Malady (Temple BG)": 1, "sumTemples": 1},
+          "numberOfLands": 1, "Temple of Malady (Temple BG)": 1, "sumTemples": 1},
         "Temple of Abandon (Temple RG)": {"R": 1, "G": 1, "opt": scoreTemples,
           "RW": 1, "GW": 1, "RU": 1, "GU": 1, "BR": 1, "BG": 1, "GR": 1,
-          "total lands": 1, "Temple of Abandon (Temple RG)": 1, "sumTemples": 1},
+          "numberOfLands": 1, "Temple of Abandon (Temple RG)": 1, "sumTemples": 1},
 
         "Raugrin Triome (Triome WUR)": {"W": 1, "U": 1, "R": 1, "opt": scoreTriomes,
           "UW": 1, "BW": 1, "RW": 1, "GW": 1, "BU": 1, "RU": 1, "GU": 1, "BR": 1, "GR": 1,
-          "total lands": 1, "Raugrin Triome (Triome WUR)": 1, "sumTriomes": 1},
+          "numberOfLands": 1, "Raugrin Triome (Triome WUR)": 1, "sumTriomes": 1},
         "Savai Triome (Triome WBR)": {"W": 1, "B": 1, "R": 1, "opt": scoreTriomes,
           "UW": 1, "BW": 1, "RW": 1, "GW": 1, "BU": 1, "RU": 1, "BR": 1, "BG": 1, "GR": 1,
-          "total lands": 1, "Savai Triome (Triome WBR)": 1, "sumTriomes": 1},
+          "numberOfLands": 1, "Savai Triome (Triome WBR)": 1, "sumTriomes": 1},
         "Indatha Triome (Triome WBG)": {"W": 1, "B": 1, "G": 1, "opt": scoreTriomes,
           "UW": 1, "BW": 1, "RW": 1, "GW": 1, "BU": 1, "GU": 1, "BR": 1, "BG": 1, "GR": 1,
-          "total lands": 1, "Indatha Triome (Triome WBG)": 1, "sumTriomes": 1},
+          "numberOfLands": 1, "Indatha Triome (Triome WBG)": 1, "sumTriomes": 1},
         "Zagoth Triome (Triome UBG)": {"U": 1, "B": 1, "G": 1, "opt": scoreTriomes,
           "UW": 1, "BW": 1, "GW": 1, "BU": 1, "RU": 1, "GU": 1, "BR": 1, "BG": 1, "GR": 1,
-          "total lands": 1, "Zagoth Triome (Triome UBG)": 1, "sumTriomes": 1},
+          "numberOfLands": 1, "Zagoth Triome (Triome UBG)": 1, "sumTriomes": 1},
         "Ketria Triome (Triome URG)": {"U": 1, "R": 1, "G": 1, "opt": scoreTriomes,
           "UW": 1, "RW": 1, "GW": 1, "BU": 1, "RU": 1, "GU": 1, "BR": 1, "BG": 1, "GR": 1,
-          "total lands": 1, "Ketria Triome (Triome URG)": 1, "sumTriomes": 1},
+          "numberOfLands": 1, "Ketria Triome (Triome URG)": 1, "sumTriomes": 1},
 
         "Glacial Fortress (Check WU)": {"W": 1, "U": 1, "opt": scoreChecks,
           "UW": 1, "BW": 1, "RW": 1, "GW": 1, "BU": 1, "RU": 1, "GU": 1,
-          "total lands": 1, "Glacial Fortress (Check WU)": 1, "sumChecks": 1},
+          "numberOfLands": 1, "Glacial Fortress (Check WU)": 1, "sumChecks": 1},
         "Isolated Chapel (Check WB)": {"W": 1, "B": 1, "opt": scoreChecks,
           "UW": 1, "BW": 1, "RW": 1, "GW": 1, "BU": 1, "BR": 1, "BG": 1,
-          "total lands": 1, "Isolated Chapel (Check WB)": 1, "sumChecks": 1},
+          "numberOfLands": 1, "Isolated Chapel (Check WB)": 1, "sumChecks": 1},
         "Clifftop Retreat (Check WR)": {"W": 1, "R": 1, "opt": scoreChecks,
           "UW": 1, "BW": 1, "RW": 1, "GW": 1, "RU": 1, "BR": 1, "GR": 1,
-          "total lands": 1, "Clifftop Retreat (Check WR)": 1, "sumChecks": 1},
+          "numberOfLands": 1, "Clifftop Retreat (Check WR)": 1, "sumChecks": 1},
         "Sunpetal Grove (Check WG)": {"W": 1, "G": 1, "opt": scoreChecks,
           "UW": 1, "BW": 1, "RW": 1, "GW": 1, "GU": 1, "BG": 1, "GR": 1,
-          "total lands": 1, "Sunpetal Grove (Check WG)": 1, "sumChecks": 1},
+          "numberOfLands": 1, "Sunpetal Grove (Check WG)": 1, "sumChecks": 1},
         "Drowned Catacomb (Check UB)": {"U": 1, "B": 1, "opt": scoreChecks,
           "UW": 1, "BW": 1, "BU": 1, "RU": 1, "GU": 1, "BR": 1, "BG": 1,
-          "total lands": 1, "Drowned Catacomb (Check UB)": 1, "sumChecks": 1},
+          "numberOfLands": 1, "Drowned Catacomb (Check UB)": 1, "sumChecks": 1},
         "Sulfur Falls (Check UR)": {"U": 1, "R": 1, "opt": scoreChecks,
           "UW": 1, "RW": 1, "BU": 1, "RU": 1, "GU": 1, "BR": 1, "GR": 1,
-          "total lands": 1, "Sulfur Falls (Check UR)": 1, "sumChecks": 1},
+          "numberOfLands": 1, "Sulfur Falls (Check UR)": 1, "sumChecks": 1},
         "Hinterland Harbor (Check UG)": {"U": 1, "G": 1, "opt": scoreChecks,
           "UW": 1, "GW": 1, "BU": 1, "RU": 1, "GU": 1, "BG": 1, "GR": 1,
-          "total lands": 1, "Hinterland Harbor (Check UG)": 1, "sumChecks": 1},
+          "numberOfLands": 1, "Hinterland Harbor (Check UG)": 1, "sumChecks": 1},
         "Dragonskull Summit (Check BR)": {"B": 1, "R": 1, "opt": scoreChecks,
           "BW": 1, "RW": 1, "BU": 1, "RU": 1, "BR": 1, "BG": 1, "GR": 1,
-          "total lands": 1, "Dragonskull Summit (Check BR)": 1, "sumChecks": 1},
+          "numberOfLands": 1, "Dragonskull Summit (Check BR)": 1, "sumChecks": 1},
         "Woodland Cemetery (Check BG)": {"B": 1, "G": 1, "opt": scoreChecks,
           "BW": 1, "GW": 1, "BU": 1, "GU": 1, "BR": 1, "BG": 1, "GR": 1,
-          "total lands": 1, "Woodland Cemetery (Check BG)": 1, "sumChecks": 1},
+          "numberOfLands": 1, "Woodland Cemetery (Check BG)": 1, "sumChecks": 1},
         "Rootbound Crag (Check RG)": {"R": 1, "G": 1, "opt": scoreChecks,
           "RW": 1, "GW": 1, "RU": 1, "GU": 1, "BR": 1, "BG": 1, "GR": 1,
-          "total lands": 1, "Rootbound Crag (Check RG)": 1, "sumChecks": 1},
+          "numberOfLands": 1, "Rootbound Crag (Check RG)": 1, "sumChecks": 1},
       }
 
       var ints = {}
@@ -305,7 +418,7 @@
         "optimize": "opt",
         "opType": "max",
         "constraints": {
-          "total lands": {"equal": numberOfLands - sumCastles},
+          "numberOfLands": {"equal": numberOfLands - sumCastles},
           "W": {"min": requiredW},
           "U": {"min": requiredU},
           "B": {"min": requiredB},
@@ -511,7 +624,7 @@
     <div id="pasteDeck" class="tab-section">
       <form onsubmit="deriveColorRequirements(); return false">
         <div class="form-group row">
-          <label class="col-2 col-form-label" for="xInManaCost">count <img src="https://gamepedia.cursecdn.com/mtgsalvation_gamepedia/3/3f/X.svg" width="36px" height="36px"/> as</label>
+          <label class="col-4 col-form-label" for="xInManaCost">count <img src="https://gamepedia.cursecdn.com/mtgsalvation_gamepedia/3/3f/X.svg" width="36px" height="36px"/> in mana cost as</label>
           <div class="col-2">
             <input id="xInManaCost" type="number" class="form-control" value="1" required>
           </div>
@@ -519,7 +632,7 @@
 
         <div class="form-group row">
           <label class="col-4 col-form-label" for="deck">deck export from MtG Arena</label>
-          <div class="col"><textarea id="deck" class="row" cols="40"></textarea></div>
+          <div class="col"><textarea id="deck" class="row" cols="40" rows="8"></textarea></div>
         </div>
 
         <button type="submit" class="btn btn-primary">Derive Color Requirements</button>
@@ -536,9 +649,9 @@
         </div>
 
         <div class="form-group row">
-          <label class="col-4 col-form-label" for="total lands">total number of lands</label>
+          <label class="col-4 col-form-label" for="numberOfLands">total number of lands</label>
           <div class="col">
-            <input id="total lands" type="number" class="form-control" value="24" required>
+            <input id="numberOfLands" type="number" class="form-control" required>
           </div>
           <div class="col"></div>
           <div id="actualTotalLands" class="col"></div>
@@ -553,7 +666,7 @@
             <input id="W" type="number" class="form-control" placeholder="0">
           </div>
           <div class="col">
-            <input id="castleW" type="number" class="form-control" placeholder="0">
+            <input id="Castle Ardenvale" type="number" class="form-control" placeholder="0">
           </div>
           <div id="actualW" class="col"></div>
         </div>
@@ -567,7 +680,7 @@
             <input id="U" type="number" class="form-control" placeholder="0">
           </div>
           <div class="col">
-            <input id="castleU" type="number" class="form-control" placeholder="0">
+            <input id="Castle Vantress" type="number" class="form-control" placeholder="0">
           </div>
           <div id="actualU" class="col"></div>
         </div>
@@ -581,7 +694,7 @@
             <input id="B" type="number" class="form-control" placeholder="0">
           </div>
           <div class="col">
-            <input id="castleB" type="number" class="form-control" placeholder="0">
+            <input id="Castle Locthwain" type="number" class="form-control" placeholder="0">
           </div>
           <div id="actualB" class="col"></div>
         </div>
@@ -595,7 +708,7 @@
             <input id="R" type="number" class="form-control" placeholder="0">
           </div>
           <div class="col">
-            <input id="castleR" type="number" class="form-control" placeholder="0">
+            <input id="Castle Embereth" type="number" class="form-control" placeholder="0">
           </div>
           <div id="actualR" class="col"></div>
         </div>
@@ -609,7 +722,7 @@
             <input id="G" type="number" class="form-control" placeholder="0">
           </div>
           <div class="col">
-            <input id="castleG" type="number" class="form-control" placeholder="0">
+            <input id="Castle Garenbrig" type="number" class="form-control" placeholder="0">
           </div>
           <div id="actualG" class="col"></div>
         </div>
@@ -772,7 +885,7 @@
         </div>
         <div class="form-group row">
           <label class="col">Temples</label>
-          <div class="col"><input id="scoreTemples" class="form-control" type="number" value="1"></div>
+          <div class="col"><input id="scoreTemples" class="form-control" type="number" value="51"></div>
           <div class="col"><input id="minTemples" class="form-control" type="number" value="0"></div>
           <div class="col"><input id="maxTemples" class="form-control" type="number" value="40"></div>
         </div>
