@@ -161,11 +161,18 @@
       var expectedDeckSize = 60
 
       var scryfallIdentifiers = []
-      deck.split("\n").forEach(function(line) {
-        if (line === "") {
+      var lines = deck.split("\n")
+      for (var i = 0; i < lines.length; i++) {
+        var line = lines[i]
+        if (line.toLowerCase() === "companion") {
+          i += 3 // skip companion line, empty line, "Deck" - as exported by MtG Arena
+        } else if (line === "") {
           sideboard = true
         } else {
           var line_split = line.split(" ")
+          if (line_split.length < 4) {
+            continue
+          }
           var name = line_split.slice(1, -2).join(" ")
           var numberOfCopies = parseInt(line_split[0]) || 0
 
@@ -186,7 +193,7 @@
             })
           }
         }
-      })
+      }
 
       var xhttp = new XMLHttpRequest()
       xhttp.onreadystatechange = function() {
