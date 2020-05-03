@@ -202,7 +202,10 @@
 
                 if (1 <= cost.cmc && cost.cmc <= 7) {
                   "W,U,B,R,G,UW,BW,RW,GW,BU,RU,GU,BR,BG,GR".split(",").forEach(function (c) {
-                    required[c] = Math.max(required[c] || 0, (karstens60CardsTable[cost.cmc][cost[c] || 0] || -1) + (cost.multicolor ? 1 : 0))
+                    required[c] = Math.max(required[c] || 0,
+                      Math.ceil(((karstens60CardsTable[cost.cmc][cost[c] || 0] || -1) + (cost.multicolor ? 1 : 0))
+                      * (expectedDeckSize === 80 ? 1.2 : 1)) // hack for yorion decks
+                    )
                   })
                 }
               })
