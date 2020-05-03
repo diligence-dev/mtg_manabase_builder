@@ -45,7 +45,24 @@
       return result
     }
 
+    function showTab(tabId) {
+      var tabSections = document.getElementsByClassName("tab-section")
+      var navLinks = document.getElementsByClassName("nav-link")
+      for (var i = 0; i < tabSections.length; i++) {
+        tabSections[i].classList.add("d-none")
+        navLinks[i].classList.remove("active")
+      }
+      document.getElementById(tabId).classList.remove("d-none")
+      document.getElementById(tabId + "NavLink").classList.add("active")
+    }
+
+    function toggleHybridMana() {
+      document.getElementById("hybridManaFields").classList.toggle("d-none")
+    }
+
     function deriveColorRequirements() {
+      var solutionPre = document.getElementById("solutionPre")
+      solutionPre.innerHTML = "Parsing decklist..."
       var xInManaCost = getInt("xInManaCost")
       var deck = document.getElementById("deck").value
       var json = JSON.stringify({
@@ -86,10 +103,13 @@
       }
       xhttp.open("POST", "https://api.scryfall.com/cards/collection", true)
       xhttp.setRequestHeader("Content-type", "application/json")
+      solutionPre.innerHTML = "Requesting mana costs from Scryfall..."
       xhttp.send(json)
     }
 
     function solveManabase() {
+      var solutionPre = document.getElementById("solutionPre")
+      solutionPre.innerHTML = "Solving mana base..."
       var numberOfLands = getInt("total lands")
       var castleW = getInt("castleW")
       var castleU = getInt("castleU")
@@ -382,9 +402,9 @@
             output += solution[prop] + " " + prop + "\n"
           }
         })
-        document.getElementById("solution").innerHTML = output
+        solutionPre.innerHTML = output
       } else {
-        document.getElementById("solution").innerHTML = "impossible - try increasing total number of lands"
+        solutionPre.innerHTML = "impossible - try increasing total number of lands"
         document.getElementById("actualTotalLands").innerHTML = ""
         document.getElementById("actualW").innerHTML = ""
         document.getElementById("actualU").innerHTML = ""
@@ -472,232 +492,324 @@
 <body>
   <div class="content my-4">
     <h1>MtG Manabase Builder</h1>
-    <form onsubmit="deriveColorRequirements(); return false">
-      <div class="form-group row">
-        <label class="col-2 col-form-label" for="xInManaCost">count <img src="https://gamepedia.cursecdn.com/mtgsalvation_gamepedia/3/3f/X.svg" width="36px" height="36px"/> as</label>
-        <div class="col-2">
-          <input id="xInManaCost" type="number" class="form-control" value="1" required>
-        </div>
-      </div>
 
-      <div class="form-group row">
-        <label class="col-4 col-form-label" for="deck">deck export from MtG Arena</label>
-        <div class="col"><textarea id="deck" class="row" cols="40"></textarea></div>
-      </div>
+    <ul class="nav nav-tabs mb-3">
+      <li class="nav-item">
+        <a id="pasteDeckNavLink" class="nav-link active" href="#" onclick="showTab('pasteDeck')">Paste Deck</a>
+      </li>
+      <li class="nav-item">
+        <a id="colorRequirementsNavLink" class="nav-link" href="#" onclick="showTab('colorRequirements')">Color Requirements</a>
+      </li>
+      <li class="nav-item">
+        <a id="optimizationScoresNavLink" class="nav-link" href="#" onclick="showTab('optimizationScores')">Optimization Scores</a>
+      </li>
+      <li class="nav-item">
+        <a id="faqNavLink" class="nav-link" href="#" onclick="showTab('faq')">FAQ</a>
+      </li>
+    </ul>
 
-      <button type="submit" class="btn btn-primary">Derive Color Requirements</button>
-    </form>
-    <form class="my-3" onsubmit="solveManabase(); return false">
-      <div class="form-group row">
-        <div class="col-4"></div>
-        <div class="col">required</div>
-        <div class="col">castles</div>
-        <div class="col">actual</div>
-      </div>
+    <div id="pasteDeck" class="tab-section">
+      <form onsubmit="deriveColorRequirements(); return false">
+        <div class="form-group row">
+          <label class="col-2 col-form-label" for="xInManaCost">count <img src="https://gamepedia.cursecdn.com/mtgsalvation_gamepedia/3/3f/X.svg" width="36px" height="36px"/> as</label>
+          <div class="col-2">
+            <input id="xInManaCost" type="number" class="form-control" value="1" required>
+          </div>
+        </div>
 
-      <div class="form-group row">
-        <label class="col-4 col-form-label" for="total lands">total number of lands</label>
-        <div class="col">
-          <input id="total lands" type="number" class="form-control" value="24" required>
+        <div class="form-group row">
+          <label class="col-4 col-form-label" for="deck">deck export from MtG Arena</label>
+          <div class="col"><textarea id="deck" class="row" cols="40"></textarea></div>
         </div>
-        <div class="col"></div>
-        <div id="actualTotalLands" class="col"></div>
-      </div>
 
-      <div class="form-group row">
-        <label class="col-4 col-form-label" for="W">
-          number of lands producing
-          <img src="https://gamepedia.cursecdn.com/mtgsalvation_gamepedia/8/8e/W.svg" height="36px" alt="white mana"/>
-        </label>
-        <div class="col">
-          <input id="W" type="number" class="form-control" placeholder="0">
-        </div>
-        <div class="col">
-          <input id="castleW" type="number" class="form-control" placeholder="0">
-        </div>
-        <div id="actualW" class="col"></div>
-      </div>
+        <button type="submit" class="btn btn-primary">Derive Color Requirements</button>
+      </form>
+    </div>
 
-      <div class="form-group row">
-        <label class="col-4 col-form-label" for="U">
-          number of lands producing
-          <img src="https://gamepedia.cursecdn.com/mtgsalvation_gamepedia/9/9f/U.svg" height="36px" alt="blue mana"/>
-        </label>
-        <div class="col">
-          <input id="U" type="number" class="form-control" placeholder="0">
+    <div id="colorRequirements" class="d-none tab-section">
+      <form class="my-3" onsubmit="solveManabase(); return false">
+        <div class="form-group row">
+          <div class="col-4"></div>
+          <div class="col">required</div>
+          <div class="col">castles</div>
+          <div class="col">actual</div>
         </div>
-        <div class="col">
-          <input id="castleU" type="number" class="form-control" placeholder="0">
-        </div>
-        <div id="actualU" class="col"></div>
-      </div>
 
-      <div class="form-group row">
-        <label class="col-4 col-form-label" for="B">
-          number of lands producing
-          <img src="https://gamepedia.cursecdn.com/mtgsalvation_gamepedia/2/2f/B.svg" height="36px" alt="black mana"/>
-        </label>
-        <div class="col">
-          <input id="B" type="number" class="form-control" placeholder="0">
+        <div class="form-group row">
+          <label class="col-4 col-form-label" for="total lands">total number of lands</label>
+          <div class="col">
+            <input id="total lands" type="number" class="form-control" value="24" required>
+          </div>
+          <div class="col"></div>
+          <div id="actualTotalLands" class="col"></div>
         </div>
-        <div class="col">
-          <input id="castleB" type="number" class="form-control" placeholder="0">
-        </div>
-        <div id="actualB" class="col"></div>
-      </div>
 
-      <div class="form-group row">
-        <label class="col-4 col-form-label" for="R">
-          number of lands producing
-          <img src="https://gamepedia.cursecdn.com/mtgsalvation_gamepedia/8/87/R.svg" height="36px" alt="red mana"/>
-        </label>
-        <div class="col">
-          <input id="R" type="number" class="form-control" placeholder="0">
+        <div class="form-group row">
+          <label class="col-4 col-form-label" for="W">
+            number of lands producing
+            <img src="https://gamepedia.cursecdn.com/mtgsalvation_gamepedia/8/8e/W.svg" height="36px" alt="white mana"/>
+          </label>
+          <div class="col">
+            <input id="W" type="number" class="form-control" placeholder="0">
+          </div>
+          <div class="col">
+            <input id="castleW" type="number" class="form-control" placeholder="0">
+          </div>
+          <div id="actualW" class="col"></div>
         </div>
-        <div class="col">
-          <input id="castleR" type="number" class="form-control" placeholder="0">
-        </div>
-        <div id="actualR" class="col"></div>
-      </div>
 
-      <div class="form-group row">
-        <label class="col-4 col-form-label" for="G">
-          number of lands producing
-          <img src="https://gamepedia.cursecdn.com/mtgsalvation_gamepedia/8/88/G.svg" height="36px" alt="green mana"/>
-        </label>
-        <div class="col">
-          <input id="G" type="number" class="form-control" placeholder="0">
+        <div class="form-group row">
+          <label class="col-4 col-form-label" for="U">
+            number of lands producing
+            <img src="https://gamepedia.cursecdn.com/mtgsalvation_gamepedia/9/9f/U.svg" height="36px" alt="blue mana"/>
+          </label>
+          <div class="col">
+            <input id="U" type="number" class="form-control" placeholder="0">
+          </div>
+          <div class="col">
+            <input id="castleU" type="number" class="form-control" placeholder="0">
+          </div>
+          <div id="actualU" class="col"></div>
         </div>
-        <div class="col">
-          <input id="castleG" type="number" class="form-control" placeholder="0">
+
+        <div class="form-group row">
+          <label class="col-4 col-form-label" for="B">
+            number of lands producing
+            <img src="https://gamepedia.cursecdn.com/mtgsalvation_gamepedia/2/2f/B.svg" height="36px" alt="black mana"/>
+          </label>
+          <div class="col">
+            <input id="B" type="number" class="form-control" placeholder="0">
+          </div>
+          <div class="col">
+            <input id="castleB" type="number" class="form-control" placeholder="0">
+          </div>
+          <div id="actualB" class="col"></div>
         </div>
-        <div id="actualG" class="col"></div>
-      </div>
 
-      <div class="form-group row">
-        <label class="col-4 col-form-label" for="UW">
-          number of lands producing
-          <img src="https://gamepedia.cursecdn.com/mtgsalvation_gamepedia/3/39/WU.svg" height="36px" alt="white or blue mana"/>
-        </label>
-        <div class="col">
-          <input id="UW" type="number" class="form-control" placeholder="0">
+        <div class="form-group row">
+          <label class="col-4 col-form-label" for="R">
+            number of lands producing
+            <img src="https://gamepedia.cursecdn.com/mtgsalvation_gamepedia/8/87/R.svg" height="36px" alt="red mana"/>
+          </label>
+          <div class="col">
+            <input id="R" type="number" class="form-control" placeholder="0">
+          </div>
+          <div class="col">
+            <input id="castleR" type="number" class="form-control" placeholder="0">
+          </div>
+          <div id="actualR" class="col"></div>
         </div>
-        <div class="col"></div>
-        <div id="actualUW" class="col"></div>
-      </div>
 
-      <div class="form-group row">
-        <label class="col-4 col-form-label" for="BW">
-          number of lands producing
-          <img src="https://gamepedia.cursecdn.com/mtgsalvation_gamepedia/a/a6/WB.svg" height="36px" alt="white or black mana"/>
-        </label>
-        <div class="col">
-          <input id="BW" type="number" class="form-control" placeholder="0">
+        <div class="form-group row">
+          <label class="col-4 col-form-label" for="G">
+            number of lands producing
+            <img src="https://gamepedia.cursecdn.com/mtgsalvation_gamepedia/8/88/G.svg" height="36px" alt="green mana"/>
+          </label>
+          <div class="col">
+            <input id="G" type="number" class="form-control" placeholder="0">
+          </div>
+          <div class="col">
+            <input id="castleG" type="number" class="form-control" placeholder="0">
+          </div>
+          <div id="actualG" class="col"></div>
         </div>
-        <div class="col"></div>
-        <div id="actualBW" class="col"></div>
-      </div>
 
-      <div class="form-group row">
-        <label class="col-4 col-form-label" for="RW">
-          number of lands producing
-          <img src="https://gamepedia.cursecdn.com/mtgsalvation_gamepedia/6/6b/RW.svg" height="36px" alt="red or white mana"/>
-        </label>
-        <div class="col">
-          <input id="RW" type="number" class="form-control" placeholder="0">
+        <div id="hybridManaFields" class="d-none">
+          <div class="form-group row">
+            <label class="col-4 col-form-label" for="UW">
+              number of lands producing
+              <img src="https://gamepedia.cursecdn.com/mtgsalvation_gamepedia/3/39/WU.svg" height="36px" alt="white or blue mana"/>
+            </label>
+            <div class="col">
+              <input id="UW" type="number" class="form-control" placeholder="0">
+            </div>
+            <div class="col"></div>
+            <div id="actualUW" class="col"></div>
+          </div>
+
+          <div class="form-group row">
+            <label class="col-4 col-form-label" for="BW">
+              number of lands producing
+              <img src="https://gamepedia.cursecdn.com/mtgsalvation_gamepedia/a/a6/WB.svg" height="36px" alt="white or black mana"/>
+            </label>
+            <div class="col">
+              <input id="BW" type="number" class="form-control" placeholder="0">
+            </div>
+            <div class="col"></div>
+            <div id="actualBW" class="col"></div>
+          </div>
+
+          <div class="form-group row">
+            <label class="col-4 col-form-label" for="RW">
+              number of lands producing
+              <img src="https://gamepedia.cursecdn.com/mtgsalvation_gamepedia/6/6b/RW.svg" height="36px" alt="red or white mana"/>
+            </label>
+            <div class="col">
+              <input id="RW" type="number" class="form-control" placeholder="0">
+            </div>
+            <div class="col"></div>
+            <div id="actualRW" class="col"></div>
+          </div>
+
+          <div class="form-group row">
+            <label class="col-4 col-form-label" for="GW">
+              number of lands producing
+              <img src="https://gamepedia.cursecdn.com/mtgsalvation_gamepedia/2/2e/GW.svg" height="36px" alt="green or white mana"/>
+            </label>
+            <div class="col">
+              <input id="GW" type="number" class="form-control" placeholder="0">
+            </div>
+            <div class="col"></div>
+            <div id="actualGW" class="col"></div>
+          </div>
+
+          <div class="form-group row">
+            <label class="col-4 col-form-label" for="BU">
+              number of lands producing
+              <img src="https://gamepedia.cursecdn.com/mtgsalvation_gamepedia/1/13/UB.svg" height="36px" alt="blue or black mana"/>
+            </label>
+            <div class="col">
+              <input id="BU" type="number" class="form-control" placeholder="0">
+            </div>
+            <div class="col"></div>
+            <div id="actualBU" class="col"></div>
+          </div>
+
+          <div class="form-group row">
+            <label class="col-4 col-form-label" for="RU">
+              number of lands producing
+              <img src="https://gamepedia.cursecdn.com/mtgsalvation_gamepedia/0/09/UR.svg" height="36px" alt="blue or red mana"/>
+            </label>
+            <div class="col">
+              <input id="RU" type="number" class="form-control" placeholder="0">
+            </div>
+            <div class="col"></div>
+            <div id="actualRU" class="col"></div>
+          </div>
+
+          <div class="form-group row">
+            <label class="col-4 col-form-label" for="GU">
+              number of lands producing
+              <img src="https://gamepedia.cursecdn.com/mtgsalvation_gamepedia/6/6f/GU.svg" height="36px" alt="green or blue mana"/>
+            </label>
+            <div class="col">
+              <input id="GU" type="number" class="form-control" placeholder="0">
+            </div>
+            <div class="col"></div>
+            <div id="actualGU" class="col"></div>
+          </div>
+
+          <div class="form-group row">
+            <label class="col-4 col-form-label" for="BR">
+              number of lands producing
+              <img src="https://gamepedia.cursecdn.com/mtgsalvation_gamepedia/b/bf/BR.svg" height="36px" alt="black or red mana"/>
+            </label>
+            <div class="col">
+              <input id="BR" type="number" class="form-control" placeholder="0">
+            </div>
+            <div class="col"></div>
+            <div id="actualBR" class="col"></div>
+          </div>
+
+          <div class="form-group row">
+            <label class="col-4 col-form-label" for="BG">
+              number of lands producing
+              <img src="https://gamepedia.cursecdn.com/mtgsalvation_gamepedia/6/62/BG.svg" height="36px" alt="black or green mana"/>
+            </label>
+            <div class="col">
+              <input id="BG" type="number" class="form-control" placeholder="0">
+            </div>
+            <div class="col"></div>
+            <div id="actualBG" class="col"></div>
+          </div>
+
+          <div class="form-group row">
+            <label class="col-4 col-form-label" for="GR">
+              number of lands producing
+              <img src="https://gamepedia.cursecdn.com/mtgsalvation_gamepedia/2/24/RG.svg" height="36px" alt="red or green mana"/>
+            </label>
+            <div class="col">
+              <input id="GR" type="number" class="form-control" placeholder="0">
+            </div>
+            <div class="col"></div>
+            <div id="actualGR" class="col"></div>
+          </div>
         </div>
-        <div class="col"></div>
-        <div id="actualRW" class="col"></div>
-      </div>
 
-      <div class="form-group row">
-        <label class="col-4 col-form-label" for="GW">
-          number of lands producing
-          <img src="https://gamepedia.cursecdn.com/mtgsalvation_gamepedia/2/2e/GW.svg" height="36px" alt="green or white mana"/>
-        </label>
-        <div class="col">
-          <input id="GW" type="number" class="form-control" placeholder="0">
+        <button type="submit" class="btn btn-primary">Submit</button>
+      </form>
+      <button class="btn btn-warning" onclick="toggleHybridMana()">Toggle Hybrid Mana</button>
+    </div>
+
+    <div id="optimizationScores" class="d-none tab-section">
+      <form onsubmit="solveManabase(); return false" class="p-2 col-sm-8 my-3">
+        <div class="mb-3">
+          color requirements and min/max will ALWAYS be met, further optimization takes scores into account
         </div>
-        <div class="col"></div>
-        <div id="actualGW" class="col"></div>
-      </div>
-
-      <div class="form-group row">
-        <label class="col-4 col-form-label" for="BU">
-          number of lands producing
-          <img src="https://gamepedia.cursecdn.com/mtgsalvation_gamepedia/1/13/UB.svg" height="36px" alt="blue or black mana"/>
-        </label>
-        <div class="col">
-          <input id="BU" type="number" class="form-control" placeholder="0">
+        <div class="form-group row">
+          <div class="col"></div>
+          <div class="col">score</div>
+          <div class="col">min</div>
+          <div class="col">max</div>
         </div>
-        <div class="col"></div>
-        <div id="actualBU" class="col"></div>
-      </div>
-
-      <div class="form-group row">
-        <label class="col-4 col-form-label" for="RU">
-          number of lands producing
-          <img src="https://gamepedia.cursecdn.com/mtgsalvation_gamepedia/0/09/UR.svg" height="36px" alt="blue or red mana"/>
-        </label>
-        <div class="col">
-          <input id="RU" type="number" class="form-control" placeholder="0">
+        <div class="form-group row">
+          <label class="col">Basic Lands</label>
+          <div class="col"><input id="scoreBasics" class="form-control" type="number" value="102"></div>
+          <div class="col"><input id="minBasics" class="form-control" type="number" value="0"></div>
+          <div class="col"><input id="maxBasics" class="form-control" type="number" value="99"></div>
         </div>
-        <div class="col"></div>
-        <div id="actualRU" class="col"></div>
-      </div>
-
-      <div class="form-group row">
-        <label class="col-4 col-form-label" for="GU">
-          number of lands producing
-          <img src="https://gamepedia.cursecdn.com/mtgsalvation_gamepedia/6/6f/GU.svg" height="36px" alt="green or blue mana"/>
-        </label>
-        <div class="col">
-          <input id="GU" type="number" class="form-control" placeholder="0">
+        <div class="form-group row">
+          <label class="col">Fabled Passage</label>
+          <div class="col"><input id="scoreFabledPassage" class="form-control" type="number" value="90"></div>
+          <div class="col"><input id="minFabledPassages" class="form-control" type="number" value="0"></div>
+          <div class="col"><input id="maxFabledPassages" class="form-control" type="number" value="4"></div>
         </div>
-        <div class="col"></div>
-        <div id="actualGU" class="col"></div>
-      </div>
-
-      <div class="form-group row">
-        <label class="col-4 col-form-label" for="BR">
-          number of lands producing
-          <img src="https://gamepedia.cursecdn.com/mtgsalvation_gamepedia/b/bf/BR.svg" height="36px" alt="black or red mana"/>
-        </label>
-        <div class="col">
-          <input id="BR" type="number" class="form-control" placeholder="0">
+        <div class="form-group row">
+          <label class="col">Shocklands</label>
+          <div class="col"><input id="scoreShocks" class="form-control" type="number" value="100"></div>
+          <div class="col"><input id="minShocks" class="form-control" type="number" value="0"></div>
+          <div class="col"><input id="maxShocks" class="form-control" type="number" value="40"></div>
         </div>
-        <div class="col"></div>
-        <div id="actualBR" class="col"></div>
-      </div>
-
-      <div class="form-group row">
-        <label class="col-4 col-form-label" for="BG">
-          number of lands producing
-          <img src="https://gamepedia.cursecdn.com/mtgsalvation_gamepedia/6/62/BG.svg" height="36px" alt="black or green mana"/>
-        </label>
-        <div class="col">
-          <input id="BG" type="number" class="form-control" placeholder="0">
+        <div class="form-group row">
+          <label class="col">Temples</label>
+          <div class="col"><input id="scoreTemples" class="form-control" type="number" value="1"></div>
+          <div class="col"><input id="minTemples" class="form-control" type="number" value="0"></div>
+          <div class="col"><input id="maxTemples" class="form-control" type="number" value="40"></div>
         </div>
-        <div class="col"></div>
-        <div id="actualBG" class="col"></div>
-      </div>
-
-      <div class="form-group row">
-        <label class="col-4 col-form-label" for="GR">
-          number of lands producing
-          <img src="https://gamepedia.cursecdn.com/mtgsalvation_gamepedia/2/24/RG.svg" height="36px" alt="red or green mana"/>
-        </label>
-        <div class="col">
-          <input id="GR" type="number" class="form-control" placeholder="0">
+        <div class="form-group row">
+          <label class="col">Triomes</label>
+          <div class="col"><input id="scoreTriomes" class="form-control" type="number" value="50"></div>
+          <div class="col"><input id="minTriomes" class="form-control" type="number" value="0"></div>
+          <div class="col"><input id="maxTriomes" class="form-control" type="number" value="40"></div>
         </div>
-        <div class="col"></div>
-        <div id="actualGR" class="col"></div>
-      </div>
+        <div class="form-group row">
+          <label class="col">Checklands</label>
+          <div class="col"><input id="scoreChecks" class="form-control" type="number" value="101"></div>
+          <div class="col"><input id="minChecks" class="form-control" type="number" value="0"></div>
+          <div class="col"><input id="maxChecks" class="form-control" type="number" value="0"></div>
+        </div>
+        <div class="form-group row">
+          <label class="col-sm-6">count Fabled Passage as fractional source (Frank suggests 0.67 for 3 color decks)</label>
+          <div class="col">
+            <input id="fractionFP" class="form-control" type="number" value="1" min="0" max="1" step="0.01">
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary">Submit</button>
+      </form>
+    </div>
 
-      <button type="submit" class="btn btn-primary">Submit</button>
-    </form>
+    <div id="faq" class="d-none tab-section">
+      <h4 class="mt-2">How many lands should I play?</h4>
+      Check out Frank Karsten's <a href="https://www.channelfireball.com/all-strategy/articles/how-many-lands-do-you-need-to-consistently-hit-your-land-drops/">awesome article</a>.
 
-    <pre id="solution"></pre>
+      <h4 class="mt-2">How many sources of each color should I play?</h4>
+      Check out Frank Karsten's <a href="https://www.channelfireball.com/all-strategy/articles/how-many-colored-mana-sources-do-you-need-to-consistently-cast-your-spells-a-guilds-of-ravnica-update/">other awesome article</a>.
+
+      <h4 class="mt-2">How does this work?</h4>
+      Manabase building can be modeled as a <a href="https://en.wikipedia.org/wiki/Linear_programming#Integer_unknowns">linear program with integer variables</a>, where all color requirements must be met while maximizing the number of untapped sources. There are solvers for these type of problems, like the <a href="https://github.com/JWally/jsLPSolver">amazing jsLPSolver</a>, which I used here.
+    </div>
+
+    <pre id="solutionPre" class="my-3"></pre>
     <div id="donate" class="d-none">
       <a href='https://ko-fi.com/Z8Z51NG5X' target='_blank'>
         <img height='36' style='border:0px;height:36px;' src='https://cdn.ko-fi.com/cdn/kofi2.png?v=2' border='0'
@@ -711,71 +823,6 @@
         <img alt="" border="0" src="https://www.paypal.com/en_US/i/scr/pixel.gif" width="1" height="1" />
       </form>
     </div>
-
-    <form onsubmit="solveManabase(); return false" class="border border-dark p-2 col-sm-8 my-3">
-      <div class="mb-3">
-        color requirements and min/max will ALWAYS be met, further optimization takes scores into account
-      </div>
-      <div class="form-group row">
-        <div class="col"></div>
-        <div class="col">score</div>
-        <div class="col">min</div>
-        <div class="col">max</div>
-      </div>
-      <div class="form-group row">
-        <label class="col">Basic Lands</label>
-        <div class="col"><input id="scoreBasics" class="form-control" type="number" value="102"></div>
-        <div class="col"><input id="minBasics" class="form-control" type="number" value="0"></div>
-        <div class="col"><input id="maxBasics" class="form-control" type="number" value="99"></div>
-      </div>
-      <div class="form-group row">
-        <label class="col">Fabled Passage</label>
-        <div class="col"><input id="scoreFabledPassage" class="form-control" type="number" value="90"></div>
-        <div class="col"><input id="minFabledPassages" class="form-control" type="number" value="0"></div>
-        <div class="col"><input id="maxFabledPassages" class="form-control" type="number" value="4"></div>
-      </div>
-      <div class="form-group row">
-        <label class="col">Shocklands</label>
-        <div class="col"><input id="scoreShocks" class="form-control" type="number" value="100"></div>
-        <div class="col"><input id="minShocks" class="form-control" type="number" value="0"></div>
-        <div class="col"><input id="maxShocks" class="form-control" type="number" value="40"></div>
-      </div>
-      <div class="form-group row">
-        <label class="col">Temples</label>
-        <div class="col"><input id="scoreTemples" class="form-control" type="number" value="1"></div>
-        <div class="col"><input id="minTemples" class="form-control" type="number" value="0"></div>
-        <div class="col"><input id="maxTemples" class="form-control" type="number" value="40"></div>
-      </div>
-      <div class="form-group row">
-        <label class="col">Triomes</label>
-        <div class="col"><input id="scoreTriomes" class="form-control" type="number" value="50"></div>
-        <div class="col"><input id="minTriomes" class="form-control" type="number" value="0"></div>
-        <div class="col"><input id="maxTriomes" class="form-control" type="number" value="40"></div>
-      </div>
-      <div class="form-group row">
-        <label class="col">Checklands</label>
-        <div class="col"><input id="scoreChecks" class="form-control" type="number" value="101"></div>
-        <div class="col"><input id="minChecks" class="form-control" type="number" value="0"></div>
-        <div class="col"><input id="maxChecks" class="form-control" type="number" value="0"></div>
-      </div>
-      <div class="form-group row">
-        <label class="col-sm-6">count Fabled Passage as fractional source (Frank suggests 0.67 for 3 color decks)</label>
-        <div class="col">
-          <input id="fractionFP" class="form-control" type="number" value="1" min="0" max="1" step="0.01">
-        </div>
-      </div>
-      <button type="submit" class="btn btn-primary">Submit</button>
-    </form>
-
-    <h2>FAQ</h2>
-    <h4 class="mt-2">How many lands should I play?</h4>
-    Check out Frank Karsten's <a href="https://www.channelfireball.com/all-strategy/articles/how-many-lands-do-you-need-to-consistently-hit-your-land-drops/">awesome article</a>.
-
-    <h4 class="mt-2">How many sources of each color should I play?</h4>
-    Check out Frank Karsten's <a href="https://www.channelfireball.com/all-strategy/articles/how-many-colored-mana-sources-do-you-need-to-consistently-cast-your-spells-a-guilds-of-ravnica-update/">other awesome article</a>.
-
-    <h4 class="mt-2">How does this work?</h4>
-    Manabase building can be modeled as a <a href="https://en.wikipedia.org/wiki/Linear_programming#Integer_unknowns">linear program with integer variables</a>, where all color requirements must be met while maximizing the number of untapped sources. There are solvers for these type of problems, like the <a href="https://github.com/JWally/jsLPSolver">amazing jsLPSolver</a>, which I used here.
   </div>
 </body>
 </html>
