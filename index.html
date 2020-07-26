@@ -164,34 +164,45 @@
       var lines = deck.split("\n")
       for (var i = 0; i < lines.length; i++) {
         var line = lines[i]
+        var lineSplit = line.split(" ")
         if (line.toLowerCase() === "companion") {
           i += 3 // skip companion line, empty line, "Deck" - as exported by MtG Arena
+          continue
         } else if (line === "") {
           sideboard = true
-        } else {
-          var line_split = line.split(" ")
-          if (line_split.length < 4) {
-            continue
-          }
-          var name = line_split.slice(1, -2).join(" ")
-          var numberOfCopies = parseInt(line_split[0]) || 0
+          continue
+        } else if (lineSplit.length <= 1) {
+          continue
+        }
 
-          if (landNames.includes(name)) {
-            numberOfLandsInDeck += sideboard ? 0 : numberOfCopies
-            if (castleNames.includes(name)) {
-              document.getElementById(name).value = numberOfCopies
-            }
-          } else {
-            if (sideboard && name === "Yorion, Sky Nomad") {
-              expectedDeckSize = 80
-            }
-            numberOfNonLandCards += sideboard ? 0 : numberOfCopies
-            scryfallIdentifiers.push({
-              name: name,
-              "set": line_split[line_split.length - 2].slice(1, -1),
-              collector_number: line_split[line_split.length - 1]
-            })
+        var maybeExpansion = lineSplit[lineSplit.length - 2]
+        if (maybeExpansion.length === 5 && maybeExpansion[0] === "(" && maybeExpansion[4] === ")"
+            && !isNaN(parseInt(lineSplit[lineSplit.length - 1]))) {
+          // set and collector_number are present
+          var name = lineSplit.slice(1, -2).join(" ")
+          var scryfallIdentifier = {
+            "name": name,
+            "set": maybeExpansion.slice(1, -1),
+            "collector_number": lineSplit[lineSplit.length - 1]
           }
+        } else {
+          var name = lineSplit.slice(1).join(" ")
+          var scryfallIdentifier = {"name": name}
+        }
+
+        var numberOfCopies = parseInt(lineSplit[0]) || 0
+
+        if (landNames.includes(name)) {
+          numberOfLandsInDeck += sideboard ? 0 : numberOfCopies
+          if (castleNames.includes(name)) {
+            document.getElementById(name).value = numberOfCopies
+          }
+        } else {
+          if (sideboard && name === "Yorion, Sky Nomad") {
+            expectedDeckSize = 80
+          }
+          numberOfNonLandCards += sideboard ? 0 : numberOfCopies
+          scryfallIdentifiers.push(scryfallIdentifier)
         }
       }
 
@@ -895,13 +906,13 @@
         </div>
         <div class="form-group row">
           <label class="col">Temples</label>
-          <div class="col"><input id="scoreTemples" class="form-control" type="number" value="51"></div>
+          <div class="col"><input id="scoreTemples" class="form-control" type="number" value="80"></div>
           <div class="col"><input id="minTemples" class="form-control" type="number" value="0"></div>
           <div class="col"><input id="maxTemples" class="form-control" type="number" value="40"></div>
         </div>
         <div class="form-group row">
           <label class="col">Triomes</label>
-          <div class="col"><input id="scoreTriomes" class="form-control" type="number" value="50"></div>
+          <div class="col"><input id="scoreTriomes" class="form-control" type="number" value="70"></div>
           <div class="col"><input id="minTriomes" class="form-control" type="number" value="0"></div>
           <div class="col"><input id="maxTriomes" class="form-control" type="number" value="40"></div>
         </div>
@@ -914,7 +925,7 @@
         <div class="form-group row">
           <label class="col-sm-6">count Fabled Passage as fractional source (Frank suggests 0.67 for 3 color decks)</label>
           <div class="col">
-            <input id="fractionFP" class="form-control" type="number" value="1" min="0" max="1" step="0.01">
+            <input id="fractionFP" class="form-control" type="number" value="0.67" min="0" max="1" step="0.01">
           </div>
         </div>
         <button type="submit" class="btn btn-primary">Submit</button>
